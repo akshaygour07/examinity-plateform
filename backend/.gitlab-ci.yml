@@ -1,0 +1,81 @@
+include:
+  - template: Jobs/SAST.gitlab-ci.yml
+  - template: Jobs/Dependency-Scanning.v2.gitlab-ci.yml
+  - template: Jobs/Secret-Detection.gitlab-ci.yml
+  - template: Jobs/Container-Scanning.gitlab-ci.yml
+
+stages:
+  - verify
+  - build
+  - test
+
+default:
+  image: node:24-bookworm
+  cache:
+    key:
+      files:
+        - pnpm-lock.yaml
+    paths:
+      - .pnpm-store/
+
+variables:
+  DATABASE_URL: postgresql://examinity:examinity@postgres:5432/examinity?schema=public
+  POSTGRES_DB: examinity
+  POSTGRES_USER: examinity
+  POSTGRES_PASSWORD: examinity
+  POSTGRES_HOST_AUTH_METHOD: trust
+  AUTH0_ISSUER_BASE_URL: https://ci.example.invalid/
+  API_AUDIENCE: https://api.examinity.local
+
+verify:
+  stage: verify
+  before_script:
+    - npm install --global pnpm@12.15.0
+    - pnpm install --frozen-lockfile --store-dir .pnpm-store
+  services:
+    - name: postgres:18
+      alias: postgres
+  script:
+    - pnpm db:generate
+    - pnpm db:deploy
+    - pnpm db:seed
+    - pnpm lint
+    - pnpm format:check
+    - pnpm typecheck
+    - pnpm test
+    - pnpm build
+    - pnpm smoke:identity
+    - pnpm audit --prod --audit-level=high
+
+build-api-image:
+  stage: build
+  image: docker:24.0.2-cli
+  before_script: []
+  services:
+    - name: docker:24.0.2-dind
+      alias: docker
+  variables:
+    DOCKER_HOST: tcp://docker:2375
+    DOCKER_TLS_CERTDIR: ""
+    DOCKER_DRIVER: overlay2
+  script:
+    - docker build --pull --file Dockerfile --tag examinity-api:$CI_COMMIT_SHA .
+    - docker save --output api-image.tar examinity-api:$CI_COMMIT_SHA
+  artifacts:
+    expire_in: 1 day
+    paths:
+      - api-image.tar
+
+container_scanning:
+  needs:
+    - job: build-api-image
+      artifacts: true
+  variables:
+    GIT_STRATEGY: fetch
+    CS_IMAGE: archive://api-image.tar
+  artifacts:
+    when: always
+    expire_in: 1 week
+    paths:
+      - dist/
+      - coverage/

@@ -1,0 +1,351 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  schemas  = ["identity", "media", "platform", "audit", "notification"]
+}
+
+model User {
+  id                    String               @id @default(uuid()) @db.Uuid
+  auth0Subject          String               @unique(map: "users_auth0_subject_key") @map("auth0_subject") @db.VarChar(255)
+  email                 String?              @db.VarChar(320)
+  emailNormalized       String?              @map("email_normalized") @db.VarChar(320)
+  firstName             String?              @map("first_name") @db.VarChar(100)
+  lastName              String?              @map("last_name") @db.VarChar(100)
+  phoneE164             String?              @map("phone_e164") @db.VarChar(20)
+  status                String               @db.VarChar(30)
+  /// Module 1 security lifecycle metadata (D2/D8); cleared only through controlled recovery.
+  suspensionReason      String?              @map("suspension_reason") @db.VarChar(1000)
+  suspensionCategory    String?              @map("suspension_category") @db.VarChar(30)
+  restrictionClearedAt  DateTime?            @map("restriction_cleared_at") @db.Timestamptz(6)
+  lockedAt              DateTime?            @map("locked_at") @db.Timestamptz(6)
+  lockReason            String?              @map("lock_reason") @db.VarChar(1000)
+  lockedUntil           DateTime?            @map("locked_until") @db.Timestamptz(6)
+  unlockedAt            DateTime?            @map("unlocked_at") @db.Timestamptz(6)
+  /// Tokens issued before this time cannot regain access after account recovery.
+  accessValidAfter      DateTime?            @map("access_valid_after") @db.Timestamptz(6)
+  emailVerified         Boolean              @default(false) @map("email_verified")
+  phoneVerified         Boolean              @default(false) @map("phone_verified")
+  termsAcceptedAt       DateTime?            @map("terms_accepted_at") @db.Timestamptz(6)
+  termsVersion          String?              @map("terms_version") @db.VarChar(50)
+  lastLoginAt           DateTime?            @map("last_login_at") @db.Timestamptz(6)
+  createdAt             DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy             String?              @map("created_by") @db.Uuid
+  updatedBy             String?              @map("updated_by") @db.Uuid
+  version               Int                  @default(1)
+  profile               UserProfile?
+  assignments           UserRoleAssignment[]
+  createdByUser         User?                @relation("UserCreatedBy", fields: [createdBy], references: [id], onDelete: SetNull)
+  createdUsers          User[]               @relation("UserCreatedBy")
+  updatedByUser         User?                @relation("UserUpdatedBy", fields: [updatedBy], references: [id], onDelete: SetNull)
+  updatedUsers          User[]               @relation("UserUpdatedBy")
+  createdAssignments    UserRoleAssignment[] @relation("AssignmentCreatedBy")
+  updatedConfigurations Configuration[]      @relation("ConfigurationUpdatedBy")
+  updatedFeatureFlags   FeatureFlag[]        @relation("FeatureFlagUpdatedBy")
+  auditEvents           AuditLog[]           @relation("AuditActor")
+  uploadedMedia         MediaAsset[]         @relation("MediaUploader")
+  emailPreference       EmailPreference?
+  termsAcceptances      TermsAcceptance[]
+  apiSessions           ApiSession[]
+  revokedApiSessions    ApiSession[]          @relation("SessionRevoker")
+
+  @@index([status], map: "users_status_idx")
+  @@map("users")
+  @@schema("identity")
+}
+
+model TermsAcceptance {
+  id                 String   @id @default(uuid()) @db.Uuid
+  userId             String   @map("user_id") @db.Uuid
+  termsVersion       String   @map("terms_version") @db.VarChar(50)
+  accepted           Boolean
+  acceptedAt         DateTime @map("accepted_at") @db.Timestamptz(6)
+  registrationSource String   @map("registration_source") @db.VarChar(30)
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  user               User     @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([userId, acceptedAt], map: "terms_acceptances_user_accepted_idx")
+  @@unique([userId, termsVersion], map: "terms_acceptances_user_version_key")
+  @@map("terms_acceptances")
+  @@schema("identity")
+}
+
+model PhoneOtpDeliveryAttempt {
+  id                 String   @id @default(uuid()) @db.Uuid
+  recipientHash      String   @map("recipient_hash") @db.VarChar(64)
+  encryptedPayload   String?  @map("encrypted_payload") @db.VarChar(1000)
+  encryptionIv       String?  @map("encryption_iv") @db.VarChar(32)
+  encryptionTag      String?  @map("encryption_tag") @db.VarChar(32)
+  whatsappMessageSid String?  @unique(map: "phone_otp_delivery_attempts_whatsapp_sid_key") @map("whatsapp_message_sid") @db.VarChar(40)
+  status             String   @db.VarChar(30)
+  expiresAt          DateTime @map("expires_at") @db.Timestamptz(6)
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([expiresAt], map: "phone_otp_delivery_attempts_expires_at_idx")
+  @@index([recipientHash, createdAt], map: "phone_otp_delivery_attempts_recipient_created_idx")
+  @@map("phone_otp_delivery_attempts")
+  @@schema("identity")
+}
+
+model UserProfile {
+  userId          String      @id @map("user_id") @db.Uuid
+  displayName     String?     @map("display_name") @db.VarChar(150)
+  avatarMediaId   String?     @map("avatar_media_id") @db.Uuid
+  locale          String      @default("en-IN") @db.VarChar(20)
+  language        String      @default("en") @db.VarChar(10)
+  timezone        String      @default("Asia/Kolkata") @db.VarChar(50)
+  preferencesJson Json        @default("{}") @map("preferences_json") @db.JsonB
+  createdAt       DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime    @updatedAt @map("updated_at") @db.Timestamptz(6)
+  user            User        @relation(fields: [userId], references: [id], onDelete: Restrict)
+  avatarMedia     MediaAsset? @relation("ProfileAvatar", fields: [avatarMediaId], references: [id], onDelete: Restrict)
+
+  @@map("user_profiles")
+  @@schema("identity")
+}
+
+model Configuration {
+  id               String   @id @default(uuid()) @db.Uuid
+  configKey        String   @unique(map: "configurations_config_key_key") @map("config_key") @db.VarChar(200)
+  /// Human-readable display name for the setting (D4 — setting_name).
+  settingName      String   @default("") @map("setting_name") @db.VarChar(200)
+  /// Logical grouping for the setting, e.g. Platform, Security, Notifications (D4 — category).
+  category         String   @default("Platform") @map("category") @db.VarChar(100)
+  valueJson        Json     @map("value_json") @db.JsonB
+  valueType        String   @map("value_type") @db.VarChar(30)
+  defaultValue     Json?    @map("default_value") @db.JsonB
+  validationSchema Json?    @map("validation_schema") @db.JsonB
+  description      String?
+  /// When true the actual value is a secret; never expose it in API responses (D4 — is_sensitive).
+  isSensitive      Boolean  @default(false) @map("is_sensitive")
+  /// When false the backend must reject update requests for this setting (D4 — is_editable).
+  isEditable       Boolean  @default(true) @map("is_editable")
+  /// ACTIVE settings are evaluated normally; INACTIVE settings are excluded from evaluation (D4 — status).
+  status           String   @default("ACTIVE") @map("status") @db.VarChar(20)
+  /// Optimistic-locking counter; incremented by the backend on every successful update (D4 — version).
+  version          Int      @default(1)
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy        String?  @map("updated_by") @db.Uuid
+  updater          User?    @relation("ConfigurationUpdatedBy", fields: [updatedBy], references: [id], onDelete: SetNull)
+
+  @@index([updatedBy], map: "configurations_updated_by_idx")
+  @@index([category], map: "configurations_category_idx")
+  @@index([status], map: "configurations_status_idx")
+  @@map("configurations")
+  @@schema("platform")
+}
+
+model FeatureFlag {
+  id          String   @id @default(uuid()) @db.Uuid
+  flagKey     String   @unique(map: "feature_flags_flag_key_key") @map("flag_key") @db.VarChar(150)
+  name        String   @default("") @db.VarChar(200)
+  enabled     Boolean
+  /// ACTIVE = flag definition is live and evaluated normally.
+  /// INACTIVE = flag definition is disabled regardless of the `enabled` field (D5 — status).
+  status      String   @default("ACTIVE") @db.VarChar(20)
+  /// Optimistic-locking counter; incremented by the backend on every successful update (D5 — version).
+  version     Int      @default(1)
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy   String?  @map("updated_by") @db.Uuid
+  updater     User?    @relation("FeatureFlagUpdatedBy", fields: [updatedBy], references: [id], onDelete: SetNull)
+
+  @@index([updatedBy], map: "feature_flags_updated_by_idx")
+  @@index([status], map: "feature_flags_status_idx")
+  @@map("feature_flags")
+  @@schema("platform")
+}
+
+model IdempotencyKey {
+  id             String   @id @default(uuid()) @db.Uuid
+  scope          String   @db.VarChar(150)
+  idempotencyKey String   @map("idempotency_key") @db.VarChar(255)
+  requestHash    String   @map("request_hash") @db.VarChar(128)
+  responseStatus Int?     @map("response_status")
+  responseJson   Json?    @map("response_json") @db.JsonB
+  expiresAt      DateTime @map("expires_at") @db.Timestamptz(6)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([scope, idempotencyKey], map: "idempotency_keys_scope_key_key")
+  @@index([expiresAt], map: "idempotency_keys_expires_at_idx")
+  @@map("idempotency_keys")
+  @@schema("platform")
+}
+
+model AuditLog {
+  id            String   @id @default(uuid()) @db.Uuid
+  actorUserId   String?  @map("actor_user_id") @db.Uuid
+  action        String   @db.VarChar(100)
+  resourceType  String   @map("resource_type") @db.VarChar(100)
+  resourceId    String?  @map("resource_id") @db.Uuid
+  requestId     String   @map("request_id") @db.VarChar(100)
+  correlationId String?  @map("correlation_id") @db.VarChar(100)
+  result        String   @db.VarChar(30)
+  metadataJson  Json?    @map("metadata_json") @db.JsonB
+  occurredAt    DateTime @default(now()) @map("occurred_at") @db.Timestamptz(6)
+  ipAddress     String?  @map("ip_address") @db.Inet
+  userAgent     String?  @map("user_agent") @db.VarChar(500)
+  actor         User?    @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@index([actorUserId], map: "audit_logs_actor_user_id_idx")
+  @@index([actorUserId, occurredAt(sort: Desc)], map: "audit_logs_actor_occurred_at_idx")
+  @@index([resourceType, resourceId], map: "audit_logs_resource_idx")
+  @@index([requestId], map: "audit_logs_request_id_idx")
+  @@index([occurredAt], map: "audit_logs_occurred_at_idx")
+  @@map("audit_logs")
+  @@schema("audit")
+}
+
+model MediaAsset {
+  id               String        @id @default(uuid()) @db.Uuid
+  objectKey        String        @unique(map: "media_assets_object_key_key") @map("object_key") @db.VarChar(500)
+  originalFilename String        @map("original_filename") @db.VarChar(255)
+  mimeType         String        @map("mime_type") @db.VarChar(150)
+  fileSizeBytes    BigInt        @map("file_size_bytes")
+  checksum         String?       @db.VarChar(128)
+  storageProvider  String        @map("storage_provider") @db.VarChar(50)
+  status           String        @db.VarChar(30)
+  visibility       String        @db.VarChar(30)
+  uploadedBy       String        @map("uploaded_by") @db.Uuid
+  createdAt        DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+  uploader         User          @relation("MediaUploader", fields: [uploadedBy], references: [id], onDelete: Restrict)
+  avatarProfiles   UserProfile[] @relation("ProfileAvatar")
+
+  @@index([uploadedBy], map: "media_assets_uploaded_by_idx")
+  @@index([status], map: "media_assets_status_idx")
+  @@map("media_assets")
+  @@schema("media")
+}
+
+model EmailTemplate {
+  id          String   @id @default(uuid()) @db.Uuid
+  templateKey String   @unique(map: "email_templates_template_key_key") @map("template_key") @db.VarChar(150)
+  subject     String   @db.VarChar(255)
+  bodyHtml    String   @map("body_html")
+  bodyText    String?  @map("body_text")
+  locale      String   @default("en-IN") @db.VarChar(20)
+  version     Int      @default(1)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("email_templates")
+  @@schema("notification")
+}
+
+model EmailPreference {
+  userId               String   @id @map("user_id") @db.Uuid
+  transactionalEnabled Boolean  @default(true) @map("transactional_enabled")
+  marketingEnabled     Boolean  @default(false) @map("marketing_enabled")
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@map("email_preferences")
+  @@schema("notification")
+}
+
+model Role {
+  id            String               @id @default(uuid()) @db.Uuid
+  code          String               @unique @db.VarChar(100)
+  name          String               @db.VarChar(150)
+  description   String?
+  /// Whether this role was seeded as part of the platform foundation and must not be deleted.
+  systemRole    Boolean              @default(false) @map("system_role")
+  /// Whether this role requires an explicitly protected workflow to assign or revoke.
+  protectedRole Boolean              @default(false) @map("is_protected")
+  assignable    Boolean              @default(true)
+  active        Boolean              @default(true)
+  createdAt     DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
+  permissions   RolePermission[]
+  assignments   UserRoleAssignment[]
+
+  @@map("roles")
+  @@schema("identity")
+}
+
+model Permission {
+  id               String           @id @default(uuid()) @db.Uuid
+  code             String           @unique @db.VarChar(150)
+  name             String           @db.VarChar(150)
+  description      String?
+  module           String           @db.VarChar(100)
+  resource         String           @db.VarChar(100)
+  action           String           @db.VarChar(50)
+  /// Whether this permission was seeded as part of the platform foundation.
+  systemPermission Boolean          @default(true) @map("system_permission")
+  active           Boolean          @default(true)
+  createdAt        DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  roles            RolePermission[]
+
+  @@map("permissions")
+  @@schema("identity")
+}
+
+model RolePermission {
+  roleId       String     @map("role_id") @db.Uuid
+  permissionId String     @map("permission_id") @db.Uuid
+  createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Restrict)
+
+  @@id([roleId, permissionId])
+  @@index([permissionId], map: "role_permissions_permission_id_idx")
+  @@map("role_permissions")
+  @@schema("identity")
+}
+
+model UserRoleAssignment {
+  id            String    @id @default(uuid()) @db.Uuid
+  userId        String    @map("user_id") @db.Uuid
+  roleId        String    @map("role_id") @db.Uuid
+  status        String    @db.VarChar(30)
+  startsAt      DateTime? @map("starts_at") @db.Timestamptz(6)
+  endsAt        DateTime? @map("ends_at") @db.Timestamptz(6)
+  revokedAt     DateTime? @map("revoked_at") @db.Timestamptz(6)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy     String?   @map("created_by") @db.Uuid
+  user          User      @relation(fields: [userId], references: [id], onDelete: Restrict)
+  role          Role      @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  createdByUser User?     @relation("AssignmentCreatedBy", fields: [createdBy], references: [id], onDelete: SetNull)
+
+  @@unique([userId, roleId], map: "user_role_assignments_user_role_key")
+  @@index([roleId], map: "user_role_assignments_role_id_idx")
+  @@index([userId], map: "user_role_assignments_user_id_idx")
+  @@map("user_role_assignments")
+  @@schema("identity")
+}
+
+/// Examinity API-token sessions observed by the shared API. The bearer token is never stored; only its SHA-256 fingerprint is retained for server-side revocation.
+model ApiSession {
+  id              String    @id @default(uuid()) @db.Uuid
+  userId          String    @map("user_id") @db.Uuid
+  tokenFingerprint String   @unique(map: "api_sessions_token_fingerprint_key") @map("token_fingerprint") @db.Char(64)
+  status          String    @default("ACTIVE") @db.VarChar(20)
+  device          String?   @db.VarChar(50)
+  browser         String?   @db.VarChar(100)
+  userAgent       String?   @map("user_agent") @db.VarChar(500)
+  ipAddress       String?   @map("ip_address") @db.VarChar(64)
+  location        String?   @db.VarChar(150)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  lastActivityAt  DateTime  @default(now()) @map("last_activity_at") @db.Timestamptz(6)
+  expiresAt       DateTime  @map("expires_at") @db.Timestamptz(6)
+  revokedAt       DateTime? @map("revoked_at") @db.Timestamptz(6)
+  revokedBy       String?   @map("revoked_by") @db.Uuid
+  user            User      @relation(fields: [userId], references: [id], onDelete: Restrict)
+  revoker         User?     @relation("SessionRevoker", fields: [revokedBy], references: [id], onDelete: SetNull)
+
+  @@index([userId, status, lastActivityAt], map: "api_sessions_user_status_activity_idx")
+  @@index([userId, expiresAt], map: "api_sessions_user_expiry_idx")
+  @@map("api_sessions")
+  @@schema("identity")
+}

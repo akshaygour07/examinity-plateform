@@ -1,0 +1,77 @@
+services:
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-examinity}
+      POSTGRES_USER: ${POSTGRES_USER:-examinity}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: build
+    command: ["pnpm", "db:deploy"]
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-examinity}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-examinity}?schema=public
+      AUTH0_ISSUER_BASE_URL: ${AUTH0_ISSUER_BASE_URL:-https://tenant.example/}
+      API_AUDIENCE: ${API_AUDIENCE:-https://api.examinity.local}
+      AUTH0_CLAIM_NAMESPACE: ${AUTH0_CLAIM_NAMESPACE:-https://examinity.in/}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  seed:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: build
+    command: ["pnpm", "db:seed"]
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-examinity}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-examinity}?schema=public
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      NODE_ENV: production
+      API_PORT: 4000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-examinity}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-examinity}?schema=public
+      AUTH0_ISSUER_BASE_URL: ${AUTH0_ISSUER_BASE_URL:-https://tenant.example/}
+      API_AUDIENCE: ${API_AUDIENCE:-https://api.examinity.local}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+      JWT_CLOCK_TOLERANCE_SECONDS: ${JWT_CLOCK_TOLERANCE_SECONDS:-60}
+      EMAIL_PROVIDER: ${EMAIL_PROVIDER:-resend}
+      EMAIL_FROM: ${EMAIL_FROM:-Examinity <notifications@example.invalid>}
+      EMAIL_REPLY_TO: ${EMAIL_REPLY_TO:-support@example.invalid}
+      EMAIL_API_KEY: ${EMAIL_API_KEY:-}
+      STORAGE_ENDPOINT: ${STORAGE_ENDPOINT:-}
+      STORAGE_REGION: ${STORAGE_REGION:-auto}
+      STORAGE_BUCKET: ${STORAGE_BUCKET:-}
+      STORAGE_ACCESS_KEY_ID: ${STORAGE_ACCESS_KEY_ID:-}
+      STORAGE_SECRET_ACCESS_KEY: ${STORAGE_SECRET_ACCESS_KEY:-}
+    ports:
+      - "127.0.0.1:${API_PORT:-4000}:4000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      seed:
+        condition: service_completed_successfully
+
+volumes:
+  postgres_data:

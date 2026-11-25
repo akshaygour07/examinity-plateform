@@ -1,0 +1,49 @@
+# Installed dependencies and package manager cache.
+/node_modules/
+/.pnpm-store/
+
+# Local environment files and secrets. Keep the safe template trackable.
+/.env
+/.env.*
+!/.env.example
+
+# Ignore entire Postman folder
+/postman/
+
+# Local Claude workflow configuration.
+/.claude/
+
+# Superseded duplicate of the generated Examinity Admin QA collection.
+/postman/Examinity-API.postman_collection.json
+
+# Generated Prisma client (the schema and migrations stay in source control).
+/src/generated/prisma/
+
+# npm is not the package manager for this repository; pnpm-lock.yaml is canonical.
+/package-lock.json
+
+# Build, test, and coverage output.
+/dist/
+/build/
+/coverage/
+/test-results/
+*.tsbuildinfo
+
+# Runtime uploads can contain user data.
+/uploads/**
+!/uploads/.gitkeep
+
+# Logs and process files.
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+*.pid
+*.pid.lock
+
+# Local operating-system and editor files.
+.DS_Store
+Thumbs.db
+Desktop.ini
+.idea/
+*.swp
