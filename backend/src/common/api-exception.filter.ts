@@ -1,4 +1,4 @@
-import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus } from "@nestjs/common";
+import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus, Logger } from "@nestjs/common";
 import type { Request, Response } from "express";
 
 /**
@@ -29,11 +29,18 @@ import type { Request, Response } from "express";
  */
 @Catch()
 export class ApiExceptionFilter implements ExceptionFilter {
+  private readonly logger = new Logger(ApiExceptionFilter.name);
+
   catch(exception: unknown, host: ArgumentsHost) {
     const http = host.switchToHttp();
     const request = http.getRequest<Request & { id?: string }>();
     const response = http.getResponse<Response>();
     const status = exception instanceof HttpException ? exception.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR;
+    if (status >= HttpStatus.INTERNAL_SERVER_ERROR)
+      this.logger.error(
+        `Unhandled request failure: ${request.method} ${request.originalUrl ?? request.url} (request_id=${request.id ?? "unknown"})`,
+        exception instanceof Error ? exception.stack : String(exception),
+      );
     const payload = exception instanceof HttpException ? exception.getResponse() : undefined;
     const body = typeof payload === "object" && payload !== null ? (payload as Record<string, unknown>) : {};
     const validationMessages = Array.isArray(body.message)

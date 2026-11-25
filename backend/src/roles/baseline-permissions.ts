@@ -122,3 +122,24 @@ export const withheldAdminPermissionCodes = [
 
 /** All Admin permission codes (baseline + withheld). Used by SUPER_ADMIN seed grant. */
 export const allAdminPermissionCodes = [...baselineAdminPermissionCodes, ...withheldAdminPermissionCodes] as const;
+
+/**
+ * Module 2 examination-management permissions approved for the initial
+ * taxonomy, examination-master and cycle-management API slice. They are
+ * granted to SUPER_ADMIN by the normal seed; ADMIN remains least-privilege.
+ */
+export const examManagementPermissionCodes = [
+  "exam.taxonomy.read",
+  "exam.taxonomy.manage",
+  "exam.authority.manage",
+  "exam.catalogue.read",
+  "exam.catalogue.create",
+  "exam.catalogue.update",
+  "exam.catalogue.archive",
+  "exam.cycle.read",
+  "exam.cycle.manage",
+  "exam.events.manage",
+  "exam.salary.manage",
+  "exam.cutoff.manage",
+  "exam.pattern.manage",
+] as const;

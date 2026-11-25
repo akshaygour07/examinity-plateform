@@ -22,7 +22,12 @@ import "dotenv/config";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../src/generated/prisma/client";
 import { configurationCatalogue, initialFeatureFlags } from "../src/platform/configuration-catalogue";
-import { platformRoleCodes, baselineAdminPermissionCodes, allAdminPermissionCodes } from "../src/roles/baseline-permissions";
+import {
+  platformRoleCodes,
+  baselineAdminPermissionCodes,
+  allAdminPermissionCodes,
+  examManagementPermissionCodes,
+} from "../src/roles/baseline-permissions";
 
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) throw new Error("DATABASE_URL is required to seed the identity catalogue");
@@ -67,6 +72,21 @@ const permissionNames: Record<string, string> = {
   // Feature flags (D5)
   "admin.feature_flags.view": "View feature flags",
   "admin.feature_flags.update": "Update feature flags",
+
+  // Module 2 â€” taxonomy, permanent examination master and independent cycles.
+  "exam.taxonomy.read": "View examination taxonomy",
+  "exam.taxonomy.manage": "Manage examination categories and groups",
+  "exam.authority.manage": "Manage examination authorities",
+  "exam.catalogue.read": "View examination catalogue",
+  "exam.catalogue.create": "Create examinations",
+  "exam.catalogue.update": "Update examinations and aliases",
+  "exam.catalogue.archive": "Archive examinations",
+  "exam.cycle.read": "View examination cycles",
+  "exam.cycle.manage": "Create, update and archive examination cycles",
+  "exam.events.manage": "Manage examination events",
+  "exam.salary.manage": "Manage examination salary records",
+  "exam.cutoff.manage": "Manage examination cutoff records",
+  "exam.pattern.manage": "Manage examination patterns and selection processes",
 };
 
 // Derive module/resource/action from the permission code (admin.resource.action).
@@ -250,7 +270,7 @@ async function main() {
   // AUTHENTICATED_USER receives no administrative permissions.
   const grants: Record<string, readonly string[]> = {
     ADMIN: baselineAdminPermissionCodes,
-    SUPER_ADMIN: allAdminPermissionCodes,
+    SUPER_ADMIN: [...allAdminPermissionCodes, ...examManagementPermissionCodes],
   };
 
   console.info("Seeding role-permission grants…");

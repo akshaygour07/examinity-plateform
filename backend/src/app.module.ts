@@ -10,6 +10,7 @@ import { MediaModule } from "./media/media.module";
 import { NotificationsModule } from "./notifications/notifications.module";
 import { DashboardModule } from "./dashboard/dashboard.module";
 import { SessionsModule } from "./sessions/sessions.module";
+import { ExamManagementModule } from "./exam-management/exam-management.module";
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { SessionsModule } from "./sessions/sessions.module";
     NotificationsModule,
     DashboardModule,
     SessionsModule,
+    ExamManagementModule,
   ],
   controllers: [HealthController],
 })

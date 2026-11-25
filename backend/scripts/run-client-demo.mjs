@@ -2,8 +2,8 @@ import { spawn } from "node:child_process";
 import { Client } from "pg";
 import { setTimeout as delay } from "node:timers/promises";
 
-const adminUrl = "postgresql://postgres:root@localhost:5432/postgres";
-const demoUrl = "postgresql://postgres:root@localhost:5432/examinity?schema=public";
+const adminUrl = "postgresql://postgres:admin@localhost:5432/postgres";
+const demoUrl = "postgresql://postgres:admin@localhost:5432/examinity?schema=public";
 const env = {
   ...process.env,
   DATABASE_URL: demoUrl,
@@ -20,6 +20,7 @@ const env = {
 const issuerUrl = "http://127.0.0.1:4011";
 const apiUrl = "http://localhost:4000";
 const children = [];
+let reusedExistingApi = false;
 const pnpm = (...args) => ["pnpm", "--config.verify-deps-before-run=false", ...args];
 
 async function ensureDatabase() {
@@ -117,6 +118,7 @@ async function main() {
   await run("corepack", pnpm("build"));
   try {
     await waitFor(`${apiUrl}/health/ready`, "Existing API");
+    reusedExistingApi = true;
   } catch {
     start("corepack", pnpm("start"));
     await waitFor(`${apiUrl}/health/live`, "API liveness");
@@ -135,7 +137,13 @@ async function main() {
     terms_version: "v1",
     registration_source: "SOCIAL",
   });
-  if (sync.status >= 400) throw new Error("Could not sync the local mock admin; see API response above.");
+  if (sync.status >= 400) {
+    if (reusedExistingApi && sync.status === 503 && sync.body?.error?.code === "auth_keys_unavailable")
+      throw new Error(
+        "The API already running on port 4000 is not configured for the local mock issuer (http://127.0.0.1:4011/). Stop that API, then run `corepack pnpm client:demo` again without starting `pnpm start` or `pnpm start:dev` separately. The demo will start the API with its required mock configuration.",
+      );
+    throw new Error("Could not sync the local mock admin; see API response above.");
+  }
 
   const adminSubject = "auth0|local-demo-user";
   const database = new Client({ connectionString: demoUrl });

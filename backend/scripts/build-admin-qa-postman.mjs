@@ -448,6 +448,139 @@ const sortedScreens = [
   .map((prefix) => byPrefix(prefix))
   .filter(Boolean);
 
+// Module 2 QA is intentionally isolated: create requests capture every generated
+// ID/version so the folder can be run top-to-bottom without hand editing.
+const m2Request = (name, method, path, body, tests = [], preRequest = []) => ({
+  name,
+  request: {
+    method,
+    header: body ? [{ key: "Content-Type", value: "application/json" }] : [],
+    url: `{{baseUrl}}${path}`,
+    ...(body ? { body: { mode: "raw", raw: JSON.stringify(body, null, 2), options: { raw: { language: "json" } } } } : {}),
+  },
+  response: [],
+  event: [
+    ...(preRequest.length ? [{ listen: "prerequest", script: { type: "text/javascript", exec: preRequest } }] : []),
+    {
+      listen: "test",
+      script: { type: "text/javascript", exec: [`pm.test('${name}', () => pm.expect(pm.response.code).to.be.within(200, 201));`, ...tests] },
+    },
+  ],
+});
+const m2Folder = {
+  name: "14 - Module 2: Taxonomy, Examination Master & Cycles",
+  description:
+    "Initial M2 API QA. Run after applying the M2 migration and granting the documented exam.* permissions to the test administrator. Requests create uniquely named QA records and capture IDs/versions for dependent requests.",
+  event: [
+    {
+      listen: "prerequest",
+      script: {
+        type: "text/javascript",
+        exec: ["if (!pm.environment.get('m2Suffix')) pm.environment.set('m2Suffix', String(Date.now()));"],
+      },
+    },
+  ],
+  item: [
+    {
+      name: "01 - Taxonomy and authorities",
+      item: [
+        m2Request("List admin categories", "GET", "/admin/exam-categories"),
+        m2Request("Create category", "POST", "/admin/exam-categories", { name: "M2 QA Category {{m2Suffix}}", slug: "m2-qa-category-{{m2Suffix}}", description: "Postman QA category", display_order: 999 }, ["const d=pm.response.json().data; pm.environment.set('m2CategoryId',d.id); pm.environment.set('m2CategoryVersion',d.version);"], ["pm.environment.set('m2Suffix', String(Date.now()));"]),
+        m2Request("Update category", "PATCH", "/admin/exam-categories/{{m2CategoryId}}", { name: "M2 QA Category Updated {{m2Suffix}}", slug: "m2-qa-category-updated-{{m2Suffix}}", description: "Updated by Postman QA", display_order: 998, expected_version: "{{m2CategoryVersion}}" }, ["pm.environment.set('m2CategoryVersion',pm.response.json().data.version);"]),
+        m2Request("List admin groups", "GET", "/admin/exam-groups"),
+        m2Request("Create group", "POST", "/admin/exam-groups", { name: "M2 QA Group {{m2Suffix}}", slug: "m2-qa-group-{{m2Suffix}}", category_id: "{{m2CategoryId}}", display_order: 999 }, ["const d=pm.response.json().data; pm.environment.set('m2GroupId',d.id); pm.environment.set('m2GroupVersion',d.version);"]),
+        m2Request("Update group", "PATCH", "/admin/exam-groups/{{m2GroupId}}", { name: "M2 QA Group Updated {{m2Suffix}}", slug: "m2-qa-group-updated-{{m2Suffix}}", category_id: "{{m2CategoryId}}", display_order: 998, expected_version: "{{m2GroupVersion}}" }),
+        m2Request("List Indian states and UTs", "GET", "/admin/states", null, ["const states=pm.response.json().data; pm.test('state master is seeded',()=>pm.expect(states.length).to.be.greaterThan(30)); pm.environment.set('m2StateId',states.find(s=>s.code==='UP')?.id || states[0]?.id);"]),
+        m2Request("List authorities", "GET", "/admin/exam-bodies"),
+        m2Request("Create authority", "POST", "/admin/exam-bodies", { name: "M2 QA Authority {{m2Suffix}}", short_name: "M2QA", slug: "m2-qa-authority-{{m2Suffix}}", description: "Postman QA authority", official_website: "https://example.test" }, ["const d=pm.response.json().data; pm.environment.set('m2BodyId',d.id); pm.environment.set('m2BodyVersion',d.version);"]),
+        m2Request("Update authority", "PATCH", "/admin/exam-bodies/{{m2BodyId}}", { name: "M2 QA Authority Updated {{m2Suffix}}", short_name: "M2QA", slug: "m2-qa-authority-updated-{{m2Suffix}}", description: "Updated by Postman QA", official_website: "https://example.test", expected_version: "{{m2BodyVersion}}" }),
+        m2Request("Public categories", "GET", "/public/exam-categories"),
+        m2Request("Public groups", "GET", "/public/exam-groups"),
+        m2Request("Public states", "GET", "/public/states"),
+        m2Request("Public authorities", "GET", "/public/exam-bodies"),
+      ],
+    },
+    {
+      name: "02 - Examination master and aliases",
+      item: [
+        m2Request("List admin exams", "GET", "/admin/exams"),
+        m2Request("Create examination", "POST", "/admin/exams", { name: "M2 QA Examination {{m2Suffix}}", short_name: "M2 QA", slug: "m2-qa-exam-{{m2Suffix}}", description: "Postman QA examination", exam_body_id: "{{m2BodyId}}", exam_scope: "NATIONAL", exam_mode: "ONLINE", official_website: "https://example.test", is_featured: false, display_order: 999, category_ids: ["{{m2CategoryId}}"], group_ids: ["{{m2GroupId}}"], state_ids: ["{{m2StateId}}"], primary_state_id: "{{m2StateId}}" }, ["const d=pm.response.json().data; pm.environment.set('m2ExamId',d.id); pm.environment.set('m2ExamVersion',d.version); pm.environment.set('m2ExamSlug',d.slug);"]),
+        m2Request("Read admin examination", "GET", "/admin/exams/{{m2ExamId}}"),
+        m2Request("Update examination", "PATCH", "/admin/exams/{{m2ExamId}}", { name: "M2 QA Examination Updated {{m2Suffix}}", short_name: "M2 QA", slug: "m2-qa-exam-updated-{{m2Suffix}}", description: "Updated by Postman QA", exam_body_id: "{{m2BodyId}}", exam_scope: "NATIONAL", exam_mode: "ONLINE", official_website: "https://example.test", is_featured: false, display_order: 998, status: "DRAFT", category_ids: ["{{m2CategoryId}}"], group_ids: ["{{m2GroupId}}"], state_ids: ["{{m2StateId}}"], primary_state_id: "{{m2StateId}}", expected_version: "{{m2ExamVersion}}" }, ["const d=pm.response.json().data; pm.environment.set('m2ExamVersion',d.version); pm.environment.set('m2ExamSlug',d.slug);"]),
+        m2Request("Activate examination", "POST", "/admin/exams/{{m2ExamId}}/activate", null, ["pm.environment.set('m2ExamVersion',pm.response.json().data.version);"]),
+        m2Request("List aliases", "GET", "/admin/exams/{{m2ExamId}}/aliases"),
+        m2Request("Add alias", "POST", "/admin/exams/{{m2ExamId}}/aliases", { alias: "M2 QA Alias {{m2Suffix}}", language_code: "en" }, ["pm.environment.set('m2AliasId',pm.response.json().data.id);"]),
+        m2Request("Remove alias", "DELETE", "/admin/exams/{{m2ExamId}}/aliases/{{m2AliasId}}"),
+        m2Request("Public catalogue", "GET", "/public/exams?q=M2%20QA"),
+        m2Request("Public search", "GET", "/public/exams/search?q=M2%20QA"),
+        m2Request("Public examination detail", "GET", "/public/exams/{{m2ExamSlug}}"),
+      ],
+    },
+    {
+      name: "03 - Examination cycles",
+      item: [
+        m2Request("List admin cycles", "GET", "/admin/exams/{{m2ExamId}}/cycles"),
+        m2Request("Create cycle", "POST", "/admin/exams/{{m2ExamId}}/cycles", { cycle_year: 2027, cycle_code: "QA-{{m2Suffix}}", cycle_label: "M2 QA Recruitment Cycle", vacancy_count: 1, notification_reference: "Postman QA", cycle_status: "UPCOMING", publication_status: "DRAFT" }, ["const d=pm.response.json().data; pm.environment.set('m2CycleId',d.id); pm.environment.set('m2CycleVersion',d.version);"]),
+        m2Request("Read admin cycle", "GET", "/admin/exam-cycles/{{m2CycleId}}"),
+        m2Request("Update cycle", "PATCH", "/admin/exam-cycles/{{m2CycleId}}", { cycle_year: 2027, cycle_code: "QA-{{m2Suffix}}", cycle_label: "M2 QA Recruitment Cycle Updated", vacancy_count: 2, notification_reference: "Postman QA update", cycle_status: "ACTIVE", publication_status: "PUBLISHED", expected_version: "{{m2CycleVersion}}" }, ["pm.environment.set('m2CycleVersion',pm.response.json().data.version);"]),
+        m2Request("Public examination cycles", "GET", "/public/exams/{{m2ExamId}}/cycles"),
+        m2Request("Public cycle detail", "GET", "/public/exam-cycles/{{m2CycleId}}"),
+        m2Request("Save overview draft", "PUT", "/admin/exam-cycles/{{m2CycleId}}/overview/draft", { description: "QA overview {{m2Suffix}}", qualificationSummary: "Graduate", ageSummary: "18 to 30", vacancySummary: "2 posts", modeSummary: "Online", notificationSummary: "Postman QA notification" }),
+        m2Request("Read admin overview", "GET", "/admin/exam-cycles/{{m2CycleId}}/overview"),
+        m2Request("List admin events", "GET", "/admin/exam-cycles/{{m2CycleId}}/events"),
+        m2Request("Create event", "POST", "/admin/exam-cycles/{{m2CycleId}}/events", { eventType: "APPLICATION_END", title: "QA application deadline", description: "Created by Postman QA", startAt: "2027-02-01T00:00:00Z", endAt: "2027-02-15T23:59:59Z", displayTimezone: "Asia/Kolkata" }, ["pm.environment.set('m2EventId',pm.response.json().data.id);"]),
+        m2Request("Revise event", "POST", "/admin/exam-events/{{m2EventId}}/revisions", { revisionReason: "QA deadline extension", endAt: "2027-02-20T23:59:59Z" }),
+        m2Request("Cancel event", "POST", "/admin/exam-events/{{m2EventId}}/cancel", { reason: "QA cancellation check" }),
+        m2Request("Create selection process", "POST", "/admin/exam-cycles/{{m2CycleId}}/selection-process", { publicationStatus: "PUBLISHED" }, ["pm.environment.set('m2SelectionVersionId',pm.response.json().data.id);"]),
+        m2Request("Add selection stage", "POST", "/admin/selection-process/{{m2SelectionVersionId}}/stages", { name: "QA Interview", sequence: 1, isMandatory: true, stageType: "INTERVIEW" }),
+        m2Request("Read public selection process", "GET", "/public/exam-cycles/{{m2CycleId}}/selection-process"),
+        m2Request("Create salary record", "POST", "/admin/exam-cycles/{{m2CycleId}}/salary", { postName: "QA Officer", payLevel: "Scale I", basicPayMin: 36000, basicPayMax: 63840 }),
+        m2Request("Read admin salary", "GET", "/admin/exam-cycles/{{m2CycleId}}/salary"),
+        m2Request("Read public salary", "GET", "/public/exam-cycles/{{m2CycleId}}/salary"),
+        m2Request("Create analysis record", "POST", "/admin/exam-cycles/{{m2CycleId}}/analysis", { analysisYear: 2026, analysisType: "PREVIOUS_YEAR", title: "QA analysis", data: { applicants: 1000 }, verificationStatus: "VERIFIED", publicationStatus: "PUBLISHED" }),
+        m2Request("Read admin analysis", "GET", "/admin/exam-cycles/{{m2CycleId}}/analysis"),
+        m2Request("Read public analysis", "GET", "/public/exam-cycles/{{m2CycleId}}/analysis"),
+        m2Request("Create cutoff record", "POST", "/admin/exam-cycles/{{m2CycleId}}/cutoffs", { cutoffYear: 2026, stageType: "PRELIMS", categoryCode: "GENERAL", cutoffMarks: 75.5, cutoffType: "OFFICIAL" }),
+        m2Request("Read admin cutoffs", "GET", "/admin/exam-cycles/{{m2CycleId}}/cutoffs"),
+        m2Request("Read public cutoffs", "GET", "/public/exam-cycles/{{m2CycleId}}/cutoffs"),
+        m2Request("Download examination Excel export", "GET", "/admin/exams/{{m2ExamId}}/export.xlsx", null, ["pm.test('Excel content type is returned',()=>pm.expect(pm.response.headers.get('Content-Type')).to.include('spreadsheetml'));"]),
+        m2Request("Archive cycle", "POST", "/admin/exam-cycles/{{m2CycleId}}/archive"),
+        m2Request("Deactivate examination", "POST", "/admin/exams/{{m2ExamId}}/deactivate"),
+        m2Request("Archive examination", "POST", "/admin/exams/{{m2ExamId}}/archive"),
+        m2Request("Archive group", "POST", "/admin/exam-groups/{{m2GroupId}}/archive"),
+        m2Request("Archive category", "POST", "/admin/exam-categories/{{m2CategoryId}}/archive"),
+      ],
+    },
+  ],
+};
+
+// Keep one Module 2 runbook, but group its requests by the backend feature so
+// QA can execute and diagnose a single feature without losing fixture order.
+const m2CyclesFolder = m2Folder.item.find((item) => item.name === "03 - Examination cycles");
+const moveM2Requests = (names) => {
+  const moved = m2CyclesFolder.item.filter((item) => names.includes(item.name));
+  m2CyclesFolder.item = m2CyclesFolder.item.filter((item) => !names.includes(item.name));
+  return moved;
+};
+const m2OverviewRequests = moveM2Requests(["Save overview draft", "Read admin overview"]);
+const m2EventRequests = moveM2Requests(["List admin events", "Create event", "Revise event", "Cancel event"]);
+const m2SelectionRequests = moveM2Requests(["Create selection process", "Add selection stage", "Read public selection process"]);
+const m2SalaryRequests = moveM2Requests(["Create salary record", "Read admin salary", "Read public salary"]);
+const m2AnalysisRequests = moveM2Requests(["Create analysis record", "Read admin analysis", "Read public analysis"]);
+const m2CutoffRequests = moveM2Requests(["Create cutoff record", "Read admin cutoffs", "Read public cutoffs"]);
+const m2ExportRequests = moveM2Requests(["Download examination Excel export"]);
+const m2CleanupRequests = moveM2Requests(["Archive cycle", "Deactivate examination", "Archive examination", "Archive group", "Archive category"]);
+m2Folder.item.push(
+  { name: "04 - Overview", item: m2OverviewRequests },
+  { name: "05 - Events", item: m2EventRequests },
+  { name: "06 - Selection process", item: m2SelectionRequests },
+  { name: "07 - Salary", item: m2SalaryRequests },
+  { name: "08 - Analysis", item: m2AnalysisRequests },
+  { name: "09 - Cutoffs", item: m2CutoffRequests },
+  { name: "10 - Excel export", item: m2ExportRequests },
+  { name: "99 - Archive QA data", item: m2CleanupRequests },
+);
+
 const collection = {
   info: {
     _postman_id: "a1c0e7e2-4b11-4f0d-9c3a-examinity-admin-qa",
@@ -475,6 +608,7 @@ const collection = {
     coreMedia,
     coreDenied,
     disabledAccountChecks,
+    m2Folder,
   ],
 };
 
