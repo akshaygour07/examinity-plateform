@@ -3,6 +3,7 @@ allowBuilds:
   prisma: true
   '@prisma/engines': true
   '@scarf/scarf': false
+  '@parcel/watcher': set this to true or false
 minimumReleaseAgeExclude:
   - '@aws-sdk/client-s3@3.1156.0'
   - '@aws-sdk/s3-request-presigner@3.1156.0'

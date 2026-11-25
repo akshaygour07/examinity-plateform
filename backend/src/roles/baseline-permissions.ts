@@ -74,6 +74,23 @@ export const adminFeatureFlagPermissions = [
   "admin.feature_flags.update", // Update feature flag enabled state
 ] as const;
 
+/** Module 3 CMS permissions for the first API slice; baseline grants them only to SUPER_ADMIN. */
+export const cmsFirstTwentyPermissions = [
+  "cms.content.create",
+  "cms.content.read",
+  "cms.content.update",
+  "cms.content.delete",
+  "cms.content.archive",
+  "cms.content.restore",
+  "cms.revision.read",
+  "cms.revision.create",
+  "cms.content.submit",
+  "cms.workflow.read",
+  "cms.assignment.manage",
+  "cms.review.read",
+  "cms.review.manage",
+] as const;
+
 /**
  * Full baseline Admin permission list granted to ADMIN role on initial seed.
  * admin.users.reinstate and admin.users.unlock are intentionally WITHHELD from
@@ -121,4 +138,8 @@ export const withheldAdminPermissionCodes = [
 ] as const;
 
 /** All Admin permission codes (baseline + withheld). Used by SUPER_ADMIN seed grant. */
-export const allAdminPermissionCodes = [...baselineAdminPermissionCodes, ...withheldAdminPermissionCodes] as const;
+export const allAdminPermissionCodes = [
+  ...baselineAdminPermissionCodes,
+  ...withheldAdminPermissionCodes,
+  ...cmsFirstTwentyPermissions,
+] as const;

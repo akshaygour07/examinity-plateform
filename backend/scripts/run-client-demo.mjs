@@ -2,8 +2,8 @@ import { spawn } from "node:child_process";
 import { Client } from "pg";
 import { setTimeout as delay } from "node:timers/promises";
 
-const adminUrl = "postgresql://postgres:root@localhost:5432/postgres";
-const demoUrl = "postgresql://postgres:root@localhost:5432/examinity?schema=public";
+const adminUrl = "postgresql://postgres:admin@localhost:5432/postgres";
+const demoUrl = "postgresql://postgres:admin@localhost:5432/examinity?schema=public";
 const env = {
   ...process.env,
   DATABASE_URL: demoUrl,

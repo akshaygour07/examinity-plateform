@@ -448,6 +448,107 @@ const sortedScreens = [
   .map((prefix) => byPrefix(prefix))
   .filter(Boolean);
 
+const cmsRequest = (name, method, path, { body, tests = [], description } = {}) => ({
+  name,
+  request: {
+    method,
+    ...(description ? { description } : {}),
+    header: body ? [{ key: "Content-Type", value: "application/json" }] : [],
+    url: `{{baseUrl}}${path}`,
+    ...(body ? { body: { mode: "raw", raw: JSON.stringify(body, null, 2), options: { raw: { language: "json" } } } } : {}),
+  },
+  response: [],
+  event: [{ listen: "test", script: { type: "text/javascript", exec: tests } }],
+});
+
+// Module 3 is deliberately self-contained so its QA flow can be run after the
+// existing mock-admin identity/sync folders. cmsContentTypeId is set once from
+// the seeded cms.cms_content_types table; no content-type read API exists yet.
+const cmsBody = (key, title, slug) => ({
+  contentTypeId: "{{cmsContentTypeId}}",
+  contentKey: key,
+  defaultLocale: "en",
+  title,
+  slug,
+  summary: "Postman QA content for the Module 3 CMS API flow.",
+  body: { schemaVersion: 1, type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "CMS QA body." }] }] },
+});
+const cmsFolder = {
+  name: "15 - Module-4 CMS",
+  description:
+    "Run after the local mock-admin authentication and sync folders. Set cmsContentTypeId to a seeded active type UUID first. Four subfolders mirror the CMS Nest modules and capture IDs for dependent requests.",
+  event: [
+    {
+      listen: "prerequest",
+      script: {
+        type: "text/javascript",
+        exec: [
+          "if (!pm.environment.get('cmsRunId')) pm.environment.set('cmsRunId', String(Date.now()));",
+          "if (!pm.environment.get('cmsReviewerUserId')) pm.environment.set('cmsReviewerUserId', pm.environment.get('userId'));",
+        ],
+      },
+    },
+  ],
+  item: [
+    {
+      name: "01 - Content",
+      item: [
+        cmsRequest("Create disposable draft for delete API", "POST", "/admin/cms/content", {
+          body: cmsBody("cms-qa-delete-{{cmsRunId}}", "Disposable CMS QA Draft", "cms-qa-delete-{{cmsRunId}}"),
+          tests: ["pm.test('draft created', () => pm.response.to.have.status(201));", "pm.environment.set('cmsDeleteContentId', pm.response.json().data.contentId);"],
+        }),
+        cmsRequest("Delete disposable draft", "DELETE", "/admin/cms/content/{{cmsDeleteContentId}}", { tests: ["pm.test('draft is soft-deleted', () => pm.response.to.have.status(200));"] }),
+        cmsRequest("Create primary CMS content", "POST", "/admin/cms/content", {
+          body: cmsBody("cms-qa-primary-{{cmsRunId}}", "Primary CMS QA Content", "cms-qa-primary-{{cmsRunId}}"),
+          tests: ["pm.test('primary content created', () => pm.response.to.have.status(201));", "const data = pm.response.json().data; pm.environment.set('cmsContentId', data.contentId); pm.environment.set('cmsRevisionId', data.revisionId);"],
+        }),
+        cmsRequest("List CMS content", "GET", "/admin/cms/content?page=1&limit=20", { tests: ["pm.test('content list returns 200', () => pm.response.to.have.status(200));"] }),
+        cmsRequest("Get primary CMS content", "GET", "/admin/cms/content/{{cmsContentId}}", { tests: ["pm.test('content detail returns 200', () => pm.response.to.have.status(200));", "pm.environment.set('cmsExpectedVersion', pm.response.json().data.revisions[0].version);"] }),
+        cmsRequest("Update primary draft", "PATCH", "/admin/cms/content/{{cmsContentId}}", {
+          body: { revisionId: "{{cmsRevisionId}}", expectedVersion: "{{cmsExpectedVersion}}", title: "Primary CMS QA Content Updated" },
+          tests: ["pm.test('draft update returns 200', () => pm.response.to.have.status(200));"],
+        }),
+        cmsRequest("Archive primary CMS content", "POST", "/admin/cms/content/{{cmsContentId}}/archive", { body: { reason: "Postman CMS archive API check" }, tests: ["pm.test('content archived', () => pm.response.to.have.status(200));"] }),
+        cmsRequest("Restore primary CMS content", "POST", "/admin/cms/content/{{cmsContentId}}/restore", { tests: ["pm.test('content restored', () => pm.response.to.have.status(200));"] }),
+      ],
+    },
+    {
+      name: "02 - Revisions",
+      item: [
+        cmsRequest("List content revisions", "GET", "/admin/cms/content/{{cmsContentId}}/revisions", { tests: ["pm.test('revision list returns 200', () => pm.response.to.have.status(200));"] }),
+        cmsRequest("Get initial revision", "GET", "/admin/cms/revisions/{{cmsRevisionId}}", { tests: ["pm.test('revision detail returns 200', () => pm.response.to.have.status(200));"] }),
+        cmsRequest("Create working revision", "POST", "/admin/cms/content/{{cmsContentId}}/revisions", {
+          body: { sourceRevisionId: "{{cmsRevisionId}}", locale: "en" },
+          tests: ["pm.test('working revision created', () => pm.response.to.have.status(201));", "pm.environment.set('cmsWorkingRevisionId', pm.response.json().data.id);"],
+        }),
+        cmsRequest("Compare initial and working revisions", "GET", "/admin/cms/revisions/{{cmsRevisionId}}/compare/{{cmsWorkingRevisionId}}", { tests: ["pm.test('revision comparison returns 200', () => pm.response.to.have.status(200));"] }),
+      ],
+    },
+    {
+      name: "03 - Workflow",
+      item: [
+        cmsRequest("Submit working revision", "POST", "/admin/cms/revisions/{{cmsWorkingRevisionId}}/submit", {
+          body: { comment: "Ready for CMS QA review." },
+          tests: ["pm.test('revision submitted', () => pm.response.to.have.status(201));", "pm.environment.set('cmsTaskId', pm.response.json().data.taskId);"],
+        }),
+        cmsRequest("List workflow tasks", "GET", "/admin/cms/workflow/tasks", { tests: ["pm.test('workflow tasks return 200', () => pm.response.to.have.status(200));"] }),
+        cmsRequest("Get review workflow task", "GET", "/admin/cms/workflow/tasks/{{cmsTaskId}}", { tests: ["pm.test('workflow task returns 200', () => pm.response.to.have.status(200));"] }),
+        cmsRequest("Assign review task to admin", "POST", "/admin/cms/workflow/tasks/{{cmsTaskId}}/assign", { body: { userId: "{{cmsReviewerUserId}}" }, tests: ["pm.test('task assigned', () => pm.response.to.have.status(200));"] }),
+        cmsRequest("Reassign review task to admin", "POST", "/admin/cms/workflow/tasks/{{cmsTaskId}}/reassign", { body: { userId: "{{cmsReviewerUserId}}" }, tests: ["pm.test('task reassigned', () => pm.response.to.have.status(200));"] }),
+      ],
+    },
+    {
+      name: "04 - Reviews",
+      item: [
+        cmsRequest("List review queue", "GET", "/admin/cms/reviews/queue", { tests: ["pm.test('review queue returns 200', () => pm.response.to.have.status(200));"] }),
+        cmsRequest("Get review task", "GET", "/admin/cms/reviews/{{cmsTaskId}}", { tests: ["pm.test('review task returns 200', () => pm.response.to.have.status(200));"] }),
+        cmsRequest("Approve review task", "POST", "/admin/cms/reviews/{{cmsTaskId}}/approve", { body: { comments: "CMS QA review approved.", fieldComments: [] }, tests: ["pm.test('review approval returns 200', () => pm.response.to.have.status(200));"] }),
+        cmsRequest("Request changes on closed task (expected 409)", "POST", "/admin/cms/reviews/{{cmsTaskId}}/request-changes", { body: { comments: "Intentional closed-task validation check." }, tests: ["pm.test('closed task rejects a second decision', () => pm.response.to.have.status(409));"] }),
+      ],
+    },
+  ],
+};
+
 const collection = {
   info: {
     _postman_id: "a1c0e7e2-4b11-4f0d-9c3a-examinity-admin-qa",
@@ -475,6 +576,7 @@ const collection = {
     coreMedia,
     coreDenied,
     disabledAccountChecks,
+    cmsFolder,
   ],
 };
 

@@ -67,6 +67,19 @@ const permissionNames: Record<string, string> = {
   // Feature flags (D5)
   "admin.feature_flags.view": "View feature flags",
   "admin.feature_flags.update": "Update feature flags",
+  "cms.content.create": "Create CMS content",
+  "cms.content.read": "View CMS content",
+  "cms.content.update": "Update CMS content",
+  "cms.content.delete": "Delete CMS draft content",
+  "cms.content.archive": "Archive CMS content",
+  "cms.content.restore": "Restore CMS content",
+  "cms.revision.read": "View CMS revisions",
+  "cms.revision.create": "Create CMS revisions",
+  "cms.content.submit": "Submit CMS content",
+  "cms.workflow.read": "View CMS workflow tasks",
+  "cms.assignment.manage": "Manage CMS task assignments",
+  "cms.review.read": "View CMS reviews",
+  "cms.review.manage": "Manage CMS reviews",
 };
 
 // Derive module/resource/action from the permission code (admin.resource.action).
@@ -206,6 +219,25 @@ async function main() {
       create: { code, name, module, resource, action, systemPermission: true, active: true },
     });
     permissions.set(code, item.id);
+  }
+
+  // Module 3 content-type configuration (developer guide §3.1).
+  for (const [code, name] of [
+    ["ARTICLE", "Article"],
+    ["EXAM_GUIDE", "Exam Guide"],
+    ["STUDY_NOTE", "Study Note"],
+    ["REVISION_NOTE", "Revision Note"],
+    ["CURRENT_AFFAIRS", "Current Affairs"],
+    ["FAQ", "FAQ"],
+    ["ANNOUNCEMENT", "Announcement"],
+    ["RESOURCE_PAGE", "Resource Page"],
+    ["LANDING_PAGE", "Landing Page"],
+  ]) {
+    await prisma.cmsContentType.upsert({
+      where: { code },
+      update: { name, isActive: true },
+      create: { code, name, schemaConfig: {}, isActive: true },
+    });
   }
 
   // ── Roles (D10) ────────────────────────────────────────────────────────────

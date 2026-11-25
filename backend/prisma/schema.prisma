@@ -5,7 +5,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  schemas  = ["identity", "media", "platform", "audit", "notification"]
+  schemas  = ["identity", "media", "platform", "audit", "notification", "cms"]
 }
 
 model User {
@@ -348,4 +348,124 @@ model ApiSession {
   @@index([userId, expiresAt], map: "api_sessions_user_expiry_idx")
   @@map("api_sessions")
   @@schema("identity")
+}
+
+/// Module 3's configurable definition for a kind of CMS content.
+model CmsContentType {
+  id                   String           @id @default(uuid()) @db.Uuid
+  code                 String           @unique @db.VarChar(50)
+  name                 String           @db.VarChar(120)
+  description          String?
+  schemaConfig         Json             @default("{}") @map("schema_config") @db.JsonB
+  requiresReview       Boolean          @default(true) @map("requires_review")
+  requiresVerification Boolean          @default(true) @map("requires_verification")
+  requiresApproval     Boolean          @default(true) @map("requires_approval")
+  requiresCategory     Boolean          @default(true) @map("requires_category")
+  requiresExamAssociation Boolean       @default(false) @map("requires_exam_association")
+  requiresSource       Boolean          @default(false) @map("requires_source")
+  isActive             Boolean          @default(true) @map("is_active")
+  displayOrder         Int              @default(0) @map("display_order")
+  createdAt            DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+  items                CmsContentItem[]
+  @@map("cms_content_types")
+  @@schema("cms")
+}
+
+/// Stable identity. Editable data belongs to CmsContentRevision.
+model CmsContentItem {
+  id                  String               @id @default(uuid()) @db.Uuid
+  contentTypeId       String               @map("content_type_id") @db.Uuid
+  contentKey          String               @unique @map("content_key") @db.VarChar(100)
+  defaultLocale       String               @default("en") @map("default_locale") @db.VarChar(10)
+  ownerUserId         String               @map("owner_user_id") @db.Uuid
+  status              String               @db.VarChar(40)
+  currentRevisionId   String?              @map("current_revision_id") @db.Uuid
+  publishedRevisionId String?              @map("published_revision_id") @db.Uuid
+  createdAt           DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
+  archivedAt          DateTime?            @map("archived_at") @db.Timestamptz(6)
+  deletedAt           DateTime?            @map("deleted_at") @db.Timestamptz(6)
+  contentType         CmsContentType       @relation(fields: [contentTypeId], references: [id], onDelete: Restrict)
+  revisions           CmsContentRevision[]
+  @@index([contentTypeId, status])
+  @@index([ownerUserId, status])
+  @@index([updatedAt])
+  @@map("cms_content_items")
+  @@schema("cms")
+}
+
+model CmsContentRevision {
+  id              String                @id @default(uuid()) @db.Uuid
+  contentItemId   String                @map("content_item_id") @db.Uuid
+  revisionNumber  Int                   @map("revision_number")
+  locale          String                @db.VarChar(10)
+  title           String                @db.VarChar(300)
+  slug            String                @db.VarChar(350)
+  summary         String?               @db.VarChar(1000)
+  body            Json                  @db.JsonB
+  plainText       String?               @map("plain_text")
+  status          String                @db.VarChar(40)
+  version         Int                   @default(1)
+  createdByUserId String                @map("created_by_user_id") @db.Uuid
+  submittedAt     DateTime?             @map("submitted_at") @db.Timestamptz(6)
+  publishedAt     DateTime?             @map("published_at") @db.Timestamptz(6)
+  createdAt       DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
+  contentItem     CmsContentItem        @relation(fields: [contentItemId], references: [id], onDelete: Restrict)
+  workflow        CmsWorkflowInstance?
+  @@unique([contentItemId, locale, revisionNumber])
+  @@index([contentItemId, locale, revisionNumber(sort: Desc)])
+  @@index([status, updatedAt(sort: Desc)])
+  @@index([locale, slug])
+  @@map("cms_content_revisions")
+  @@schema("cms")
+}
+
+model CmsWorkflowInstance {
+  id                String            @id @default(uuid()) @db.Uuid
+  revisionId        String            @unique @map("revision_id") @db.Uuid
+  state             String            @db.VarChar(40)
+  submittedByUserId String            @map("submitted_by_user_id") @db.Uuid
+  submittedAt       DateTime          @default(now()) @map("submitted_at") @db.Timestamptz(6)
+  createdAt         DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+  revision          CmsContentRevision @relation(fields: [revisionId], references: [id], onDelete: Restrict)
+  tasks             CmsWorkflowTask[]
+  @@index([state])
+  @@map("cms_workflow_instances")
+  @@schema("cms")
+}
+
+model CmsWorkflowTask {
+  id                 String              @id @default(uuid()) @db.Uuid
+  workflowInstanceId String              @map("workflow_instance_id") @db.Uuid
+  taskType           String              @map("task_type") @db.VarChar(30)
+  status             String              @db.VarChar(30)
+  assignedToUserId   String?             @map("assigned_to_user_id") @db.Uuid
+  assignedByUserId   String?             @map("assigned_by_user_id") @db.Uuid
+  dueAt              DateTime?           @map("due_at") @db.Timestamptz(6)
+  completedAt        DateTime?           @map("completed_at") @db.Timestamptz(6)
+  createdAt          DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+  workflow           CmsWorkflowInstance @relation(fields: [workflowInstanceId], references: [id], onDelete: Restrict)
+  reviews            CmsContentReview[]
+  @@index([taskType, status])
+  @@index([assignedToUserId, status])
+  @@map("cms_workflow_tasks")
+  @@schema("cms")
+}
+
+model CmsContentReview {
+  id            String           @id @default(uuid()) @db.Uuid
+  workflowTaskId String           @map("workflow_task_id") @db.Uuid
+  decision      String           @db.VarChar(30)
+  comments      String?
+  fieldComments Json             @default("[]") @map("field_comments") @db.JsonB
+  decidedByUserId String         @map("decided_by_user_id") @db.Uuid
+  decidedAt     DateTime         @default(now()) @map("decided_at") @db.Timestamptz(6)
+  task          CmsWorkflowTask  @relation(fields: [workflowTaskId], references: [id], onDelete: Restrict)
+  @@index([workflowTaskId])
+  @@map("cms_content_reviews")
+  @@schema("cms")
 }
