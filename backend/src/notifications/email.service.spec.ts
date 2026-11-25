@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { jest } from "@jest/globals";
+import { Logger } from "@nestjs/common";
 import { EmailService } from "./email.service";
 
 test("renders escaped HTML and sanitized text using stored templates", async () => {
@@ -22,6 +24,7 @@ test("renders escaped HTML and sanitized text using stored templates", async () 
 });
 
 test("skips opted-out nonessential messages and treats provider failures as best-effort", async () => {
+  const logWarning = jest.spyOn(Logger.prototype, "warn").mockImplementation(() => undefined);
   const prisma = {
     user: { findUnique: async () => ({ email: "a@example.test", emailPreference: { transactionalEnabled: false } }) },
     emailTemplate: { findUnique: async () => ({ active: true, subject: "", bodyHtml: "" }) },
@@ -34,6 +37,12 @@ test("skips opted-out nonessential messages and treats provider failures as best
       },
     } as never,
   );
-  assert.equal(await service.sendToUser("u", "WELCOME", {}), false);
-  assert.equal(await service.sendToUser("u", "ACCOUNT_DISABLED", {}), false);
+  try {
+    assert.equal(await service.sendToUser("u", "WELCOME", {}), false);
+    assert.equal(await service.sendToUser("u", "ACCOUNT_DISABLED", {}), false);
+    assert.equal(logWarning.mock.calls.length, 1);
+    assert.match(String(logWarning.mock.calls[0][0]), /ACCOUNT_DISABLED/);
+  } finally {
+    logWarning.mockRestore();
+  }
 });

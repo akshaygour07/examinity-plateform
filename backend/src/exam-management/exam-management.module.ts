@@ -10,19 +10,23 @@ import { SelectionProcessModule } from "./selection-process/selection-process.mo
 import { SalaryModule } from "./salary/salary.module";
 import { AnalysisModule } from "./analysis/analysis.module";
 import { CutoffsModule } from "./cutoffs/cutoffs.module";
+import { DocumentsModule } from "./documents/documents.module";
+import { ImportsModule } from "./imports/imports.module";
 @Module({
-    imports: [
-        TaxonomyModule,
-        ExamsModule,
-        OverviewModule,
-        EligibilityModule,
-        ExamPatternModule,
-        SyllabusModule,
-        EventsModule,
-        SelectionProcessModule,
-        SalaryModule,
-        AnalysisModule,
-        CutoffsModule
-    ]
+  imports: [
+    TaxonomyModule,
+    ExamsModule,
+    OverviewModule,
+    EligibilityModule,
+    ExamPatternModule,
+    SyllabusModule,
+    EventsModule,
+    SelectionProcessModule,
+    SalaryModule,
+    AnalysisModule,
+    CutoffsModule,
+    DocumentsModule,
+    ImportsModule,
+  ],
 })
-export class ExamManagementModule { }
+export class ExamManagementModule {}

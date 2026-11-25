@@ -1,4 +1,4 @@
-import { IsDateString, IsOptional, IsString, IsUUID, MaxLength } from "class-validator";
+import { IsDateString, IsIn, IsOptional, IsString, IsUUID, MaxLength } from "class-validator";
 export class EventDto {
   @IsString() @MaxLength(50) eventType!: string;
   @IsString() @MaxLength(200) title!: string;
@@ -7,7 +7,7 @@ export class EventDto {
   @IsOptional() @IsDateString() endAt?: string;
   @IsOptional() @IsString() displayTimezone?: string;
   @IsOptional() @IsUUID() sourceReferenceId?: string;
-  @IsOptional() @IsString() eventStatus?: string;
+  @IsOptional() @IsIn(["DRAFT", "ACTIVE", "CANCELLED"]) eventStatus?: string;
 }
 export class EventRevisionDto {
   @IsString() revisionReason!: string;
@@ -17,4 +17,5 @@ export class EventRevisionDto {
 }
 export class CancelEventDto {
   @IsString() reason!: string;
+  @IsOptional() @IsUUID() sourceReferenceId?: string;
 }

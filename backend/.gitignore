@@ -16,6 +16,11 @@
 # Superseded duplicate of the generated Examinity Admin QA collection.
 /postman/Examinity-API.postman_collection.json
 
+# Local PDF extraction helper and documentation drafts are not published.
+/.pdf-extract.cjs
+/docs/*.md
+/docs/**/*.md
+
 # Generated Prisma client (the schema and migrations stay in source control).
 /src/generated/prisma/
 

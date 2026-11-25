@@ -47,6 +47,34 @@ export class ExamsService {
     });
     return { data: items };
   }
+  async taxonomyDetail(kind: "category" | "group", id: string) {
+    const item = await (this.taxonomyModel(kind) as any).findUnique({
+      where: { id },
+      include: kind === "group" ? { category: true } : undefined,
+    });
+    if (!item) throw new NotFoundException({ code: "exam_taxonomy_not_found", message: "The examination taxonomy record was not found." });
+    return { data: item };
+  }
+  async relatedExams(examId: string) {
+    const exam = await this.prisma.exam.findUnique({ where: { id: examId }, include: { categoryMappings: true, groupMappings: true } });
+    if (!exam || exam.status !== "ACTIVE")
+      throw new NotFoundException({ code: "exam_not_found", message: "The examination was not found." });
+    const categoryIds = exam.categoryMappings.map((item) => item.categoryId);
+    const groupIds = exam.groupMappings.map((item) => item.groupId);
+    const items = await this.prisma.exam.findMany({
+      where: {
+        id: { not: examId },
+        status: "ACTIVE",
+        OR: [
+          { categoryMappings: { some: { categoryId: { in: categoryIds } } } },
+          { groupMappings: { some: { groupId: { in: groupIds } } } },
+        ],
+      },
+      take: 10,
+      orderBy: { displayOrder: "asc" },
+    });
+    return { data: items };
+  }
   async createTaxonomy(kind: "category" | "group", dto: TaxonomyDto, actor: InternalPrincipal) {
     if (kind === "group" && dto.category_id) await this.exists("examCategory", [dto.category_id], true);
     try {
@@ -408,11 +436,29 @@ export class ExamsService {
     if (!exam) throw new NotFoundException({ code: "exam_not_found", message: "The examination was not found." });
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet("Examination");
-    sheet.columns = [{ header: "Field", key: "field", width: 28 }, { header: "Value", key: "value", width: 70 }];
-    Object.entries({ id: exam.id, name: exam.name, slug: exam.slug, status: exam.status, authority: exam.body.name, scope: exam.examScope, mode: exam.examMode }).forEach(([field, value]) => sheet.addRow({ field, value: value ?? "" }));
+    sheet.columns = [
+      { header: "Field", key: "field", width: 28 },
+      { header: "Value", key: "value", width: 70 },
+    ];
+    Object.entries({
+      id: exam.id,
+      name: exam.name,
+      slug: exam.slug,
+      status: exam.status,
+      authority: exam.body.name,
+      scope: exam.examScope,
+      mode: exam.examMode,
+    }).forEach(([field, value]) => sheet.addRow({ field, value: value ?? "" }));
     const cycles = workbook.addWorksheet("Cycles");
-    cycles.columns = [{ header: "Year", key: "year", width: 12 }, { header: "Code", key: "code", width: 22 }, { header: "Label", key: "label", width: 35 }, { header: "Status", key: "status", width: 24 }];
-    exam.cycles.forEach((item) => cycles.addRow({ year: item.cycleYear, code: item.cycleCode, label: item.cycleLabel, status: item.cycleStatus }));
+    cycles.columns = [
+      { header: "Year", key: "year", width: 12 },
+      { header: "Code", key: "code", width: 22 },
+      { header: "Label", key: "label", width: 35 },
+      { header: "Status", key: "status", width: 24 },
+    ];
+    exam.cycles.forEach((item) =>
+      cycles.addRow({ year: item.cycleYear, code: item.cycleCode, label: item.cycleLabel, status: item.cycleStatus }),
+    );
     return Buffer.from(await workbook.xlsx.writeBuffer());
   }
 }

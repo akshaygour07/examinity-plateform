@@ -83,10 +83,20 @@ const permissionNames: Record<string, string> = {
   "exam.catalogue.archive": "Archive examinations",
   "exam.cycle.read": "View examination cycles",
   "exam.cycle.manage": "Create, update and archive examination cycles",
+  "exam.eligibility.read": "View examination eligibility configuration",
+  "exam.eligibility.manage": "Manage examination eligibility configuration",
   "exam.events.manage": "Manage examination events",
   "exam.salary.manage": "Manage examination salary records",
   "exam.cutoff.manage": "Manage examination cutoff records",
   "exam.pattern.manage": "Manage examination patterns and selection processes",
+  "exam.syllabus.manage": "Manage structured, versioned examination syllabuses",
+  "exam.documents.manage": "Manage official examination documents and links",
+  "exam.faq.manage": "Manage examination FAQs",
+  "exam.import": "Import examination data",
+  "exam.review": "Review examination content",
+  "exam.verify": "Verify examination content",
+  "exam.publish": "Publish examination content",
+  "exam.unpublish": "Unpublish examination content",
 };
 
 // Derive module/resource/action from the permission code (admin.resource.action).

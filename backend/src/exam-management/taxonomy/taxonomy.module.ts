@@ -9,12 +9,7 @@ import { TaxonomyController } from "./taxonomy.controller";
 @Module({
   imports: [ExamsModule],
   controllers: [TaxonomyController],
-  providers: [
-    CategoriesService,
-    ExamGroupsService,
-    StatesService,
-    ExamBodiesService,
-  ],
+  providers: [CategoriesService, ExamGroupsService, StatesService, ExamBodiesService],
   exports: [CategoriesService, ExamGroupsService, StatesService, ExamBodiesService],
 })
 export class TaxonomyModule {}

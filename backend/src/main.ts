@@ -14,7 +14,9 @@ import { ResponseInterceptor } from "./common/response.interceptor";
 import { MaintenanceModeMiddleware } from "./platform/maintenance-mode.middleware";
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  // Startup failures must be visible to the local demo runner. Buffering logs
+  // hides Nest dependency/configuration errors and leaves only a health timeout.
+  const app = await NestFactory.create(AppModule);
   app.use(helmet());
   app.use(rateLimit({ windowMs: 60_000, limit: 120, standardHeaders: "draft-8", legacyHeaders: false }));
   app.use(

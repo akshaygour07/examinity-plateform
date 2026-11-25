@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { BadRequestException } from "@nestjs/common";
+import { jest } from "@jest/globals";
+import { BadRequestException, Logger } from "@nestjs/common";
 import { ApiExceptionFilter } from "../src/common/api-exception.filter";
 
 function capture(exception: unknown) {
@@ -25,16 +26,24 @@ function capture(exception: unknown) {
 }
 
 test("unexpected errors do not expose database or credential details", () => {
-  const result = capture(new Error("password=private database host=internal"));
-  assert.equal(result.status, 500);
-  assert.deepEqual(result.body, {
-    error: {
-      code: "internal_server_error",
-      message: "An unexpected error occurred.",
-      details: {},
-      request_id: "request-safe",
-    },
-  });
+  const logError = jest.spyOn(Logger.prototype, "error").mockImplementation(() => undefined);
+  try {
+    const result = capture(new Error("password=private database host=internal"));
+    assert.equal(result.status, 500);
+    assert.deepEqual(result.body, {
+      error: {
+        code: "internal_server_error",
+        message: "An unexpected error occurred.",
+        details: {},
+        request_id: "request-safe",
+      },
+    });
+    assert.equal(logError.mock.calls.length, 1);
+    assert.match(String(logError.mock.calls[0][0]), /Unhandled request failure/);
+    assert.doesNotMatch(String(logError.mock.calls[0][0]), /password=private|host=internal/);
+  } finally {
+    logError.mockRestore();
+  }
 });
 
 test("validation errors return a stable safe envelope with request ID", () => {

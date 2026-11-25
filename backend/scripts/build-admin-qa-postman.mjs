@@ -543,6 +543,20 @@ const m2Folder = {
         m2Request("Create cutoff record", "POST", "/admin/exam-cycles/{{m2CycleId}}/cutoffs", { cutoffYear: 2026, stageType: "PRELIMS", categoryCode: "GENERAL", cutoffMarks: 75.5, cutoffType: "OFFICIAL" }),
         m2Request("Read admin cutoffs", "GET", "/admin/exam-cycles/{{m2CycleId}}/cutoffs"),
         m2Request("Read public cutoffs", "GET", "/public/exam-cycles/{{m2CycleId}}/cutoffs"),
+        m2Request("Read admin syllabus", "GET", "/admin/exam-cycles/{{m2CycleId}}/syllabus"),
+        m2Request("Create syllabus", "POST", "/admin/exam-cycles/{{m2CycleId}}/syllabus", { title: "M2 QA Syllabus {{m2Suffix}}", description: "Structured syllabus created by Postman QA" }, ["pm.environment.set('m2SyllabusId',pm.response.json().data.id);"]),
+        m2Request("Create syllabus version", "POST", "/admin/syllabuses/{{m2SyllabusId}}/versions", { versionLabel: "M2 QA v1", languageDefault: "en" }, ["pm.environment.set('m2SyllabusVersionId',pm.response.json().data.id);"]),
+        m2Request("Read admin syllabus version", "GET", "/admin/syllabus-versions/{{m2SyllabusVersionId}}"),
+        m2Request("Add syllabus stage", "POST", "/admin/syllabus-versions/{{m2SyllabusVersionId}}/stages", { name: "Preliminary Examination", sequence: 1 }, ["pm.environment.set('m2SyllabusStageId',pm.response.json().data.id);"]),
+        m2Request("Add syllabus paper", "POST", "/admin/syllabus-stages/{{m2SyllabusStageId}}/papers", { name: "General Studies", sequence: 1 }, ["pm.environment.set('m2SyllabusPaperId',pm.response.json().data.id);"]),
+        m2Request("Add syllabus subject", "POST", "/admin/syllabus-papers/{{m2SyllabusPaperId}}/subjects", { name: "Indian Polity", description: "QA syllabus subject", sequence: 1 }, ["pm.environment.set('m2SyllabusSubjectId',pm.response.json().data.id);"]),
+        m2Request("Add syllabus topic", "POST", "/admin/syllabus-subjects/{{m2SyllabusSubjectId}}/topics", { name: "Constitution of India", description: "QA syllabus topic", topicCode: "QA-POLITY-{{m2Suffix}}", displayOrder: 1, translations: [{ languageCode: "hi", name: "भारत का संविधान", description: "QA Hindi translation" }] }, ["pm.environment.set('m2SyllabusTopicId',pm.response.json().data.id);"]),
+        m2Request("Add syllabus child topic", "POST", "/admin/syllabus-topics/{{m2SyllabusTopicId}}/children", { name: "Fundamental Rights", topicCode: "QA-RIGHTS-{{m2Suffix}}", displayOrder: 1 }, ["pm.environment.set('m2SyllabusChildTopicId',pm.response.json().data.id);"]),
+        m2Request("Update syllabus topic", "PATCH", "/admin/syllabus-topics/{{m2SyllabusTopicId}}", { name: "Constitution of India Updated", displayOrder: 2, translations: [{ languageCode: "hi", name: "भारत का संविधान संशोधित" }] }),
+        m2Request("Validate syllabus version", "POST", "/admin/syllabus-versions/{{m2SyllabusVersionId}}/validate", null, ["pm.test('Syllabus hierarchy is valid',()=>pm.expect(pm.response.json().data.valid).to.eql(true));"]),
+        m2Request("Publish syllabus version", "POST", "/admin/syllabus-versions/{{m2SyllabusVersionId}}/publish"),
+        m2Request("Read public cycle syllabus", "GET", "/public/exam-cycles/{{m2CycleId}}/syllabus"),
+        m2Request("Read public syllabus version", "GET", "/public/syllabus-versions/{{m2SyllabusVersionId}}"),
         m2Request("Download examination Excel export", "GET", "/admin/exams/{{m2ExamId}}/export.xlsx", null, ["pm.test('Excel content type is returned',()=>pm.expect(pm.response.headers.get('Content-Type')).to.include('spreadsheetml'));"]),
         m2Request("Archive cycle", "POST", "/admin/exam-cycles/{{m2CycleId}}/archive"),
         m2Request("Deactivate examination", "POST", "/admin/exams/{{m2ExamId}}/deactivate"),
@@ -568,6 +582,7 @@ const m2SelectionRequests = moveM2Requests(["Create selection process", "Add sel
 const m2SalaryRequests = moveM2Requests(["Create salary record", "Read admin salary", "Read public salary"]);
 const m2AnalysisRequests = moveM2Requests(["Create analysis record", "Read admin analysis", "Read public analysis"]);
 const m2CutoffRequests = moveM2Requests(["Create cutoff record", "Read admin cutoffs", "Read public cutoffs"]);
+const m2SyllabusRequests = moveM2Requests(["Read admin syllabus", "Create syllabus", "Create syllabus version", "Read admin syllabus version", "Add syllabus stage", "Add syllabus paper", "Add syllabus subject", "Add syllabus topic", "Add syllabus child topic", "Update syllabus topic", "Validate syllabus version", "Publish syllabus version", "Read public cycle syllabus", "Read public syllabus version"]);
 const m2ExportRequests = moveM2Requests(["Download examination Excel export"]);
 const m2CleanupRequests = moveM2Requests(["Archive cycle", "Deactivate examination", "Archive examination", "Archive group", "Archive category"]);
 m2Folder.item.push(
@@ -577,9 +592,36 @@ m2Folder.item.push(
   { name: "07 - Salary", item: m2SalaryRequests },
   { name: "08 - Analysis", item: m2AnalysisRequests },
   { name: "09 - Cutoffs", item: m2CutoffRequests },
-  { name: "10 - Excel export", item: m2ExportRequests },
+  { name: "10 - Syllabus", item: m2SyllabusRequests },
+  { name: "11 - Excel export", item: m2ExportRequests },
   { name: "99 - Archive QA data", item: m2CleanupRequests },
 );
+
+// Remaining developer-guideline endpoints. These stay in the same M2 runbook
+// and reuse IDs captured by the prerequisite folders above.
+const additionalM2Coverage = [
+  ["12 - Catalogue extras", [["Admin category detail","GET","/admin/exam-categories/{{m2CategoryId}}"],["Public related examinations","GET","/public/exams/{{m2ExamId}}/related"]]],
+  ["13 - Eligibility", [["Create eligibility profile","POST","/admin/exam-cycles/{{m2CycleId}}/eligibility",{name:"QA eligibility"}],["Create eligibility version","POST","/admin/eligibility-profiles/{{m2EligibilityProfileId}}/versions",{}],["Read eligibility version","GET","/admin/eligibility-versions/{{m2EligibilityVersionId}}"],["Replace eligibility inputs","PUT","/admin/eligibility-versions/{{m2EligibilityVersionId}}/inputs",{items:[]}],["Replace eligibility rules","PUT","/admin/eligibility-versions/{{m2EligibilityVersionId}}/rules",{groups:[]}],["Validate eligibility","POST","/admin/eligibility-versions/{{m2EligibilityVersionId}}/validate"],["Check public eligibility","POST","/public/exam-cycles/{{m2CycleId}}/eligibility/check",{}]]],
+  ["14 - Pattern management", [["Create pattern version","POST","/admin/exam-cycles/{{m2CycleId}}/pattern-versions",{name:"QA Pattern"}],["Create pattern stage","POST","/admin/pattern-versions/{{m2PatternVersionId}}/stages",{name:"QA Stage",stageType:"PRELIMINARY",sequence:1}],["Update pattern stage","PATCH","/admin/exam-stages/{{m2PatternStageId}}",{name:"QA Stage Updated"}],["Delete pattern stage","DELETE","/admin/exam-stages/{{m2PatternStageId}}"],["Create pattern paper","POST","/admin/exam-stages/{{m2PatternStageId}}/papers",{name:"QA Paper",sequence:1}],["Update pattern paper","PATCH","/admin/exam-papers/{{m2PatternPaperId}}",{name:"QA Paper Updated"}],["Reorder pattern","PUT","/admin/exam-patterns/{{m2PatternVersionId}}/reorder",{items:[]}],["Validate pattern","POST","/admin/exam-patterns/{{m2PatternVersionId}}/validate"]]],
+  ["15 - Documents, links and FAQs", [["List admin documents","GET","/admin/exams/{{m2ExamId}}/documents"],["Create document","POST","/admin/exams/{{m2ExamId}}/documents",{documentTitle:"QA notification",documentType:"NOTIFICATION",externalUrl:"https://example.test/notification.pdf"}],["Update document","PATCH","/admin/exam-documents/{{m2DocumentId}}",{documentTitle:"QA notification updated"}],["Public documents","GET","/public/exams/{{m2ExamId}}/documents"],["List admin links","GET","/admin/exams/{{m2ExamId}}/links"],["Create link","POST","/admin/exams/{{m2ExamId}}/links",{title:"QA authority link",url:"https://example.test",linkType:"OFFICIAL"}],["Update link","PATCH","/admin/exam-links/{{m2LinkId}}",{title:"QA link updated"}],["Public links","GET","/public/exams/{{m2ExamId}}/links"],["List admin FAQs","GET","/admin/exams/{{m2ExamId}}/faqs"],["Create FAQ","POST","/admin/exams/{{m2ExamId}}/faqs",{question:"QA question?",answer:"QA answer."}],["Update FAQ","PATCH","/admin/exam-faqs/{{m2FaqId}}",{answer:"QA answer updated."}],["Public FAQs","GET","/public/exams/{{m2ExamId}}/faqs"]]],
+  ["16 - Publishing and imports", [["Publishing queue","GET","/admin/publishing/queue"],["Submit content for review","POST","/admin/exam-content/{{m2DocumentId}}/submit-review"],["Approve content review","POST","/admin/exam-content/{{m2DocumentId}}/approve-review"],["Verify content","POST","/admin/exam-content/{{m2DocumentId}}/verify"],["Publish content","POST","/admin/exam-content/{{m2DocumentId}}/publish"],["Unpublish content","POST","/admin/exam-content/{{m2DocumentId}}/unpublish"],["Archive content","POST","/admin/exam-content/{{m2DocumentId}}/archive"],["Create import job","POST","/admin/exam-imports",{importType:"EXAM",fileMediaId:"00000000-0000-0000-0000-000000000000"}],["Read import job","GET","/admin/exam-imports/{{m2ImportJobId}}"],["Read import errors","GET","/admin/exam-imports/{{m2ImportJobId}}/errors"],["Commit import job","POST","/admin/exam-imports/{{m2ImportJobId}}/commit"]]],
+];
+for (const [name, requests] of additionalM2Coverage) m2Folder.item.splice(m2Folder.item.length - 1, 0, { name, item: requests.map(([n,m,p,b]) => m2Request(n,m,p,b)) });
+m2Folder.item.splice(m2Folder.item.length - 1, 0, {
+  name: "17 - Previously implemented coverage",
+  item: [
+    m2Request("Read public overview", "GET", "/public/exam-cycles/{{m2CycleId}}/overview"),
+    m2Request("Read public eligibility", "GET", "/public/exam-cycles/{{m2CycleId}}/eligibility"),
+    m2Request("Read admin eligibility", "GET", "/admin/exam-cycles/{{m2CycleId}}/eligibility"),
+    m2Request("Read public pattern", "GET", "/public/exam-cycles/{{m2CycleId}}/pattern"),
+    m2Request("Read admin pattern", "GET", "/admin/exam-cycles/{{m2CycleId}}/pattern"),
+    m2Request("Read pattern version", "GET", "/admin/pattern-versions/{{m2PatternVersionId}}"),
+    m2Request("Read public events", "GET", "/public/exam-cycles/{{m2CycleId}}/events"),
+    m2Request("Update event", "PATCH", "/admin/exam-events/{{m2EventId}}", { title: "QA application deadline updated" }),
+    m2Request("Read admin selection process", "GET", "/admin/exam-cycles/{{m2CycleId}}/selection-process"),
+    m2Request("Update selection stage", "PATCH", "/admin/selection-stages/{{m2SelectionStageId}}", { name: "QA Interview Updated" }),
+  ],
+});
 
 const collection = {
   info: {

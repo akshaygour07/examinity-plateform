@@ -51,7 +51,7 @@ model User {
   emailPreference       EmailPreference?
   termsAcceptances      TermsAcceptance[]
   apiSessions           ApiSession[]
-  revokedApiSessions    ApiSession[]          @relation("SessionRevoker")
+  revokedApiSessions    ApiSession[]         @relation("SessionRevoker")
 
   @@index([status], map: "users_status_idx")
   @@map("users")
@@ -68,8 +68,8 @@ model TermsAcceptance {
   createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   user               User     @relation(fields: [userId], references: [id], onDelete: Restrict)
 
-  @@index([userId, acceptedAt], map: "terms_acceptances_user_accepted_idx")
   @@unique([userId, termsVersion], map: "terms_acceptances_user_version_key")
+  @@index([userId, acceptedAt], map: "terms_acceptances_user_accepted_idx")
   @@map("terms_acceptances")
   @@schema("identity")
 }
@@ -327,22 +327,22 @@ model UserRoleAssignment {
 
 /// Examinity API-token sessions observed by the shared API. The bearer token is never stored; only its SHA-256 fingerprint is retained for server-side revocation.
 model ApiSession {
-  id              String    @id @default(uuid()) @db.Uuid
-  userId          String    @map("user_id") @db.Uuid
-  tokenFingerprint String   @unique(map: "api_sessions_token_fingerprint_key") @map("token_fingerprint") @db.Char(64)
-  status          String    @default("ACTIVE") @db.VarChar(20)
-  device          String?   @db.VarChar(50)
-  browser         String?   @db.VarChar(100)
-  userAgent       String?   @map("user_agent") @db.VarChar(500)
-  ipAddress       String?   @map("ip_address") @db.VarChar(64)
-  location        String?   @db.VarChar(150)
-  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  lastActivityAt  DateTime  @default(now()) @map("last_activity_at") @db.Timestamptz(6)
-  expiresAt       DateTime  @map("expires_at") @db.Timestamptz(6)
-  revokedAt       DateTime? @map("revoked_at") @db.Timestamptz(6)
-  revokedBy       String?   @map("revoked_by") @db.Uuid
-  user            User      @relation(fields: [userId], references: [id], onDelete: Restrict)
-  revoker         User?     @relation("SessionRevoker", fields: [revokedBy], references: [id], onDelete: SetNull)
+  id               String    @id @default(uuid()) @db.Uuid
+  userId           String    @map("user_id") @db.Uuid
+  tokenFingerprint String    @unique(map: "api_sessions_token_fingerprint_key") @map("token_fingerprint") @db.Char(64)
+  status           String    @default("ACTIVE") @db.VarChar(20)
+  device           String?   @db.VarChar(50)
+  browser          String?   @db.VarChar(100)
+  userAgent        String?   @map("user_agent") @db.VarChar(500)
+  ipAddress        String?   @map("ip_address") @db.VarChar(64)
+  location         String?   @db.VarChar(150)
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  lastActivityAt   DateTime  @default(now()) @map("last_activity_at") @db.Timestamptz(6)
+  expiresAt        DateTime  @map("expires_at") @db.Timestamptz(6)
+  revokedAt        DateTime? @map("revoked_at") @db.Timestamptz(6)
+  revokedBy        String?   @map("revoked_by") @db.Uuid
+  user             User      @relation(fields: [userId], references: [id], onDelete: Restrict)
+  revoker          User?     @relation("SessionRevoker", fields: [revokedBy], references: [id], onDelete: SetNull)
 
   @@index([userId, status, lastActivityAt], map: "api_sessions_user_status_activity_idx")
   @@index([userId, expiresAt], map: "api_sessions_user_expiry_idx")
@@ -353,95 +353,100 @@ model ApiSession {
 /// Module 2 taxonomy and catalogue. Examination masters deliberately remain
 /// separate from their independently managed yearly cycles.
 model ExamCategory {
-  id String @id @default(uuid()) @db.Uuid
-  name String @unique @db.VarChar(150)
-  slug String @unique @db.VarChar(180)
-  description String?
-  displayOrder Int @default(0) @map("display_order")
-  status String @default("ACTIVE") @db.VarChar(20)
-  archivedAt DateTime? @map("archived_at") @db.Timestamptz(6)
-  version Int @default(1)
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
-  groups ExamGroup[]
-  mappings ExamCategoryMapping[]
+  id           String                @id @default(uuid()) @db.Uuid
+  name         String                @unique @db.VarChar(150)
+  slug         String                @unique @db.VarChar(180)
+  description  String?
+  displayOrder Int                   @default(0) @map("display_order")
+  status       String                @default("ACTIVE") @db.VarChar(20)
+  archivedAt   DateTime?             @map("archived_at") @db.Timestamptz(6)
+  version      Int                   @default(1)
+  createdAt    DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
+  groups       ExamGroup[]
+  mappings     ExamCategoryMapping[]
+
   @@map("exam_categories")
   @@schema("exam")
 }
 
 model ExamGroup {
-  id String @id @default(uuid()) @db.Uuid
-  categoryId String? @map("category_id") @db.Uuid
-  name String @unique @db.VarChar(150)
-  slug String @unique @db.VarChar(180)
-  description String?
-  displayOrder Int @default(0) @map("display_order")
-  status String @default("ACTIVE") @db.VarChar(20)
-  archivedAt DateTime? @map("archived_at") @db.Timestamptz(6)
-  version Int @default(1)
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
-  category ExamCategory? @relation(fields: [categoryId], references: [id], onDelete: Restrict)
-  mappings ExamGroupMapping[]
+  id           String             @id @default(uuid()) @db.Uuid
+  categoryId   String?            @map("category_id") @db.Uuid
+  name         String             @unique @db.VarChar(150)
+  slug         String             @unique @db.VarChar(180)
+  description  String?
+  displayOrder Int                @default(0) @map("display_order")
+  status       String             @default("ACTIVE") @db.VarChar(20)
+  archivedAt   DateTime?          @map("archived_at") @db.Timestamptz(6)
+  version      Int                @default(1)
+  createdAt    DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+  category     ExamCategory?      @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  mappings     ExamGroupMapping[]
+
   @@index([categoryId], map: "exam_groups_category_id_idx")
   @@map("exam_groups")
   @@schema("exam")
 }
 
 model State {
-  id String @id @default(uuid()) @db.Uuid
-  name String @db.VarChar(100)
-  code String @unique @db.VarChar(10)
-  slug String @unique @db.VarChar(120)
-  stateType String @map("state_type") @db.VarChar(20)
-  displayOrder Int @default(0) @map("display_order")
-  status String @default("ACTIVE") @db.VarChar(20)
-  mappings ExamStateMapping[]
+  id           String             @id @default(uuid()) @db.Uuid
+  name         String             @db.VarChar(100)
+  code         String             @unique @db.VarChar(10)
+  slug         String             @unique @db.VarChar(120)
+  stateType    String             @map("state_type") @db.VarChar(20)
+  displayOrder Int                @default(0) @map("display_order")
+  status       String             @default("ACTIVE") @db.VarChar(20)
+  mappings     ExamStateMapping[]
+
   @@map("states")
   @@schema("exam")
 }
 
 model ExamBody {
-  id String @id @default(uuid()) @db.Uuid
-  name String @unique @db.VarChar(200)
-  shortName String? @map("short_name") @db.VarChar(80)
-  slug String @unique @db.VarChar(180)
-  description String?
-  officialWebsite String? @map("official_website")
-  logoMediaId String? @map("logo_media_id") @db.Uuid
-  status String @default("ACTIVE") @db.VarChar(20)
-  version Int @default(1)
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
-  exams Exam[]
+  id              String   @id @default(uuid()) @db.Uuid
+  name            String   @unique @db.VarChar(200)
+  shortName       String?  @map("short_name") @db.VarChar(80)
+  slug            String   @unique @db.VarChar(180)
+  description     String?
+  officialWebsite String?  @map("official_website")
+  logoMediaId     String?  @map("logo_media_id") @db.Uuid
+  status          String   @default("ACTIVE") @db.VarChar(20)
+  version         Int      @default(1)
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  exams           Exam[]
+
   @@map("exam_bodies")
   @@schema("exam")
 }
 
 model Exam {
-  id String @id @default(uuid()) @db.Uuid
-  name String @db.VarChar(250)
-  shortName String? @map("short_name") @db.VarChar(100)
-  slug String @unique @db.VarChar(200)
-  description String?
-  examBodyId String @map("exam_body_id") @db.Uuid
-  examScope String @map("exam_scope") @db.VarChar(30)
-  examMode String? @map("exam_mode") @db.VarChar(30)
-  officialWebsite String? @map("official_website")
-  logoMediaId String? @map("logo_media_id") @db.Uuid
-  isFeatured Boolean @default(false) @map("is_featured")
-  displayOrder Int @default(0) @map("display_order")
-  status String @default("DRAFT") @db.VarChar(20)
-  archivedAt DateTime? @map("archived_at") @db.Timestamptz(6)
-  version Int @default(1)
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
-  body ExamBody @relation(fields: [examBodyId], references: [id], onDelete: Restrict)
-  aliases ExamAlias[]
+  id               String                @id @default(uuid()) @db.Uuid
+  name             String                @db.VarChar(250)
+  shortName        String?               @map("short_name") @db.VarChar(100)
+  slug             String                @unique @db.VarChar(200)
+  description      String?
+  examBodyId       String                @map("exam_body_id") @db.Uuid
+  examScope        String                @map("exam_scope") @db.VarChar(30)
+  examMode         String?               @map("exam_mode") @db.VarChar(30)
+  officialWebsite  String?               @map("official_website")
+  logoMediaId      String?               @map("logo_media_id") @db.Uuid
+  isFeatured       Boolean               @default(false) @map("is_featured")
+  displayOrder     Int                   @default(0) @map("display_order")
+  status           String                @default("DRAFT") @db.VarChar(20)
+  archivedAt       DateTime?             @map("archived_at") @db.Timestamptz(6)
+  version          Int                   @default(1)
+  createdAt        DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
+  body             ExamBody              @relation(fields: [examBodyId], references: [id], onDelete: Restrict)
+  aliases          ExamAlias[]
   categoryMappings ExamCategoryMapping[]
-  groupMappings ExamGroupMapping[]
-  stateMappings ExamStateMapping[]
-  cycles ExamCycle[]
+  groupMappings    ExamGroupMapping[]
+  stateMappings    ExamStateMapping[]
+  cycles           ExamCycle[]
+
   @@index([examBodyId], map: "exams_body_id_idx")
   @@index([status, displayOrder], map: "exams_status_display_order_idx")
   @@map("exams")
@@ -449,76 +454,85 @@ model Exam {
 }
 
 model ExamCategoryMapping {
-  id String @id @default(uuid()) @db.Uuid
-  examId String @map("exam_id") @db.Uuid
-  categoryId String @map("category_id") @db.Uuid
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  exam Exam @relation(fields: [examId], references: [id], onDelete: Restrict)
-  category ExamCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  id         String       @id @default(uuid()) @db.Uuid
+  examId     String       @map("exam_id") @db.Uuid
+  categoryId String       @map("category_id") @db.Uuid
+  createdAt  DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  exam       Exam         @relation(fields: [examId], references: [id], onDelete: Restrict)
+  category   ExamCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
   @@unique([examId, categoryId])
   @@map("exam_category_mappings")
   @@schema("exam")
 }
+
 model ExamGroupMapping {
-  id String @id @default(uuid()) @db.Uuid
-  examId String @map("exam_id") @db.Uuid
-  groupId String @map("group_id") @db.Uuid
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  exam Exam @relation(fields: [examId], references: [id], onDelete: Restrict)
-  group ExamGroup @relation(fields: [groupId], references: [id], onDelete: Restrict)
+  id        String    @id @default(uuid()) @db.Uuid
+  examId    String    @map("exam_id") @db.Uuid
+  groupId   String    @map("group_id") @db.Uuid
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  exam      Exam      @relation(fields: [examId], references: [id], onDelete: Restrict)
+  group     ExamGroup @relation(fields: [groupId], references: [id], onDelete: Restrict)
+
   @@unique([examId, groupId])
   @@map("exam_group_mappings")
   @@schema("exam")
 }
+
 model ExamStateMapping {
-  id String @id @default(uuid()) @db.Uuid
-  examId String @map("exam_id") @db.Uuid
-  stateId String @map("state_id") @db.Uuid
-  isPrimary Boolean @default(false) @map("is_primary")
+  id        String   @id @default(uuid()) @db.Uuid
+  examId    String   @map("exam_id") @db.Uuid
+  stateId   String   @map("state_id") @db.Uuid
+  isPrimary Boolean  @default(false) @map("is_primary")
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  exam Exam @relation(fields: [examId], references: [id], onDelete: Restrict)
-  state State @relation(fields: [stateId], references: [id], onDelete: Restrict)
+  exam      Exam     @relation(fields: [examId], references: [id], onDelete: Restrict)
+  state     State    @relation(fields: [stateId], references: [id], onDelete: Restrict)
+
   @@unique([examId, stateId])
   @@map("exam_state_mappings")
   @@schema("exam")
 }
+
 model ExamAlias {
-  id String @id @default(uuid()) @db.Uuid
-  examId String @map("exam_id") @db.Uuid
-  alias String @db.VarChar(200)
-  normalizedAlias String @map("normalized_alias") @db.VarChar(200)
-  languageCode String @default("en") @map("language_code") @db.VarChar(10)
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  exam Exam @relation(fields: [examId], references: [id], onDelete: Restrict)
+  id              String   @id @default(uuid()) @db.Uuid
+  examId          String   @map("exam_id") @db.Uuid
+  alias           String   @db.VarChar(200)
+  normalizedAlias String   @map("normalized_alias") @db.VarChar(200)
+  languageCode    String   @default("en") @map("language_code") @db.VarChar(10)
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  exam            Exam     @relation(fields: [examId], references: [id], onDelete: Restrict)
+
   @@unique([normalizedAlias, languageCode])
   @@index([examId])
   @@map("exam_aliases")
   @@schema("exam")
 }
+
 model ExamCycle {
-  id String @id @default(uuid()) @db.Uuid
-  examId String @map("exam_id") @db.Uuid
-  cycleYear Int @map("cycle_year") @db.SmallInt
-  cycleCode String @map("cycle_code") @db.VarChar(60)
-  cycleLabel String @map("cycle_label") @db.VarChar(100)
-  vacancyCount Int? @map("vacancy_count")
-  notificationReference String? @map("notification_reference") @db.VarChar(200)
-  cycleStatus String @default("UPCOMING") @map("cycle_status") @db.VarChar(30)
-  publicationStatus String @default("DRAFT") @map("publication_status") @db.VarChar(30)
-  archivedAt DateTime? @map("archived_at") @db.Timestamptz(6)
-  version Int @default(1)
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
-  exam Exam @relation(fields: [examId], references: [id], onDelete: Restrict)
-  overviewVersions ExamOverviewVersion[]
-  eligibilityProfile EligibilityProfile?
-  patternVersions ExamPatternVersion[]
-  syllabus Syllabus?
-  events ExamEvent[]
+  id                       String                    @id @default(uuid()) @db.Uuid
+  examId                   String                    @map("exam_id") @db.Uuid
+  cycleYear                Int                       @map("cycle_year") @db.SmallInt
+  cycleCode                String                    @map("cycle_code") @db.VarChar(60)
+  cycleLabel               String                    @map("cycle_label") @db.VarChar(100)
+  vacancyCount             Int?                      @map("vacancy_count")
+  notificationReference    String?                   @map("notification_reference") @db.VarChar(200)
+  cycleStatus              String                    @default("UPCOMING") @map("cycle_status") @db.VarChar(30)
+  publicationStatus        String                    @default("DRAFT") @map("publication_status") @db.VarChar(30)
+  archivedAt               DateTime?                 @map("archived_at") @db.Timestamptz(6)
+  version                  Int                       @default(1)
+  createdAt                DateTime                  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                DateTime                  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  exam                     Exam                      @relation(fields: [examId], references: [id], onDelete: Restrict)
+  overviewVersions         ExamOverviewVersion[]
+  eligibilityProfile       EligibilityProfile?
+  patternVersions          ExamPatternVersion[]
+  syllabus                 Syllabus?
+  events                   ExamEvent[]
   selectionProcessVersions SelectionProcessVersion[]
-  salaryRecords SalaryRecord[]
-  analysisRecords ExamAnalysisRecord[]
-  cutoffRecords CutoffRecord[]
+  salaryRecords            SalaryRecord[]
+  analysisRecords          ExamAnalysisRecord[]
+  cutoffRecords            CutoffRecord[]
+
   @@unique([examId, cycleCode])
   @@index([examId, cycleYear])
   @@index([publicationStatus, cycleStatus])
@@ -527,372 +541,504 @@ model ExamCycle {
 }
 
 model ExamEvent {
-  id String @id @default(uuid()) @db.Uuid
-  examCycleId String @map("exam_cycle_id") @db.Uuid
-  eventType String @map("event_type") @db.VarChar(50)
-  title String @db.VarChar(200)
-  description String?
-  startAt DateTime? @map("start_at") @db.Timestamptz(6)
-  endAt DateTime? @map("end_at") @db.Timestamptz(6)
-  displayTimezone String @default("Asia/Kolkata") @map("display_timezone") @db.VarChar(60)
-  eventStatus String @default("ACTIVE") @map("event_status") @db.VarChar(30)
-  sourceReferenceId String? @map("source_reference_id") @db.Uuid
-  publishedAt DateTime? @map("published_at") @db.Timestamptz(6)
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
-  cycle ExamCycle @relation(fields:[examCycleId],references:[id],onDelete:Restrict)
-  revisions ExamEventRevision[]
-  @@index([examCycleId,startAt])
+  id                String              @id @default(uuid()) @db.Uuid
+  examCycleId       String              @map("exam_cycle_id") @db.Uuid
+  eventType         String              @map("event_type") @db.VarChar(50)
+  title             String              @db.VarChar(200)
+  description       String?
+  startAt           DateTime?           @map("start_at") @db.Timestamptz(6)
+  endAt             DateTime?           @map("end_at") @db.Timestamptz(6)
+  displayTimezone   String              @default("Asia/Kolkata") @map("display_timezone") @db.VarChar(60)
+  eventStatus       String              @default("ACTIVE") @map("event_status") @db.VarChar(30)
+  sourceReferenceId String?             @map("source_reference_id") @db.Uuid
+  publishedAt       DateTime?           @map("published_at") @db.Timestamptz(6)
+  createdAt         DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+  cycle             ExamCycle           @relation(fields: [examCycleId], references: [id], onDelete: Restrict)
+  revisions         ExamEventRevision[]
+
+  @@index([examCycleId, startAt])
   @@map("exam_events")
   @@schema("exam")
 }
+
 model ExamEventRevision {
- id String @id @default(uuid()) @db.Uuid
- examEventId String @map("exam_event_id") @db.Uuid
- revisionNumber Int @map("revision_number")
- previousStartAt DateTime? @map("previous_start_at") @db.Timestamptz(6)
- newStartAt DateTime? @map("new_start_at") @db.Timestamptz(6)
- previousEndAt DateTime? @map("previous_end_at") @db.Timestamptz(6)
- newEndAt DateTime? @map("new_end_at") @db.Timestamptz(6)
- revisionReason String @map("revision_reason")
- sourceReferenceId String? @map("source_reference_id") @db.Uuid
- createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
- event ExamEvent @relation(fields:[examEventId],references:[id],onDelete:Restrict)
- @@unique([examEventId,revisionNumber])
- @@map("exam_event_revisions")
- @@schema("exam")
+  id                   String    @id @default(uuid()) @db.Uuid
+  examEventId          String    @map("exam_event_id") @db.Uuid
+  revisionNumber       Int       @map("revision_number")
+  previousStartAt      DateTime? @map("previous_start_at") @db.Timestamptz(6)
+  newStartAt           DateTime? @map("new_start_at") @db.Timestamptz(6)
+  previousEndAt        DateTime? @map("previous_end_at") @db.Timestamptz(6)
+  newEndAt             DateTime? @map("new_end_at") @db.Timestamptz(6)
+  revisionReason       String    @map("revision_reason")
+  sourceReferenceId    String?   @map("source_reference_id") @db.Uuid
+  revisionStatus       String    @default("PENDING_REVIEW") @map("revision_status") @db.VarChar(30)
+  requestedEventStatus String?   @map("requested_event_status") @db.VarChar(30)
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  event                ExamEvent @relation(fields: [examEventId], references: [id], onDelete: Restrict)
+
+  @@unique([examEventId, revisionNumber])
+  @@map("exam_event_revisions")
+  @@schema("exam")
 }
+
 model SelectionProcessVersion {
- id String @id @default(uuid()) @db.Uuid
- examCycleId String @map("exam_cycle_id") @db.Uuid
- versionNumber Int @map("version_number")
- publicationStatus String @default("DRAFT") @map("publication_status") @db.VarChar(30)
- createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
- cycle ExamCycle @relation(fields:[examCycleId],references:[id],onDelete:Restrict)
- stages SelectionStage[]
- @@unique([examCycleId,versionNumber])
- @@map("selection_process_versions")
- @@schema("exam")
+  id                String           @id @default(uuid()) @db.Uuid
+  examCycleId       String           @map("exam_cycle_id") @db.Uuid
+  versionNumber     Int              @map("version_number")
+  publicationStatus String           @default("DRAFT") @map("publication_status") @db.VarChar(30)
+  createdAt         DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  cycle             ExamCycle        @relation(fields: [examCycleId], references: [id], onDelete: Restrict)
+  stages            SelectionStage[]
+
+  @@unique([examCycleId, versionNumber])
+  @@map("selection_process_versions")
+  @@schema("exam")
 }
+
 model SelectionStage {
- id String @id @default(uuid()) @db.Uuid
- selectionProcessVersionId String @map("selection_process_version_id") @db.Uuid
- name String @db.VarChar(200)
- description String?
- sequence Int
- isMandatory Boolean @default(true) @map("is_mandatory")
- stageType String @map("stage_type") @db.VarChar(50)
- version SelectionProcessVersion @relation(fields:[selectionProcessVersionId],references:[id],onDelete:Restrict)
- @@unique([selectionProcessVersionId,sequence])
- @@map("selection_stages")
- @@schema("exam")
+  id                        String                  @id @default(uuid()) @db.Uuid
+  selectionProcessVersionId String                  @map("selection_process_version_id") @db.Uuid
+  name                      String                  @db.VarChar(200)
+  description               String?
+  sequence                  Int
+  isMandatory               Boolean                 @default(true) @map("is_mandatory")
+  stageType                 String                  @map("stage_type") @db.VarChar(50)
+  version                   SelectionProcessVersion @relation(fields: [selectionProcessVersionId], references: [id], onDelete: Restrict)
+
+  @@unique([selectionProcessVersionId, sequence])
+  @@map("selection_stages")
+  @@schema("exam")
 }
+
 model SalaryRecord {
- id String @id @default(uuid()) @db.Uuid
- examCycleId String @map("exam_cycle_id") @db.Uuid
- postName String @map("post_name") @db.VarChar(200)
- payLevel String? @map("pay_level") @db.VarChar(50)
- basicPayMin Decimal? @map("basic_pay_min") @db.Decimal(12,2)
- basicPayMax Decimal? @map("basic_pay_max") @db.Decimal(12,2)
- payScale String? @map("pay_scale")
- allowances Json?
- benefits String?
- effectiveFrom DateTime? @map("effective_from") @db.Date
- effectiveTo DateTime? @map("effective_to") @db.Date
- sourceReferenceId String? @map("source_reference_id") @db.Uuid
- cycle ExamCycle @relation(fields:[examCycleId],references:[id],onDelete:Restrict)
- @@map("salary_records")
- @@schema("exam")
+  id                String    @id @default(uuid()) @db.Uuid
+  examCycleId       String    @map("exam_cycle_id") @db.Uuid
+  postName          String    @map("post_name") @db.VarChar(200)
+  payLevel          String?   @map("pay_level") @db.VarChar(50)
+  basicPayMin       Decimal?  @map("basic_pay_min") @db.Decimal(12, 2)
+  basicPayMax       Decimal?  @map("basic_pay_max") @db.Decimal(12, 2)
+  payScale          String?   @map("pay_scale")
+  allowances        Json?
+  benefits          String?
+  effectiveFrom     DateTime? @map("effective_from") @db.Date
+  effectiveTo       DateTime? @map("effective_to") @db.Date
+  sourceReferenceId String?   @map("source_reference_id") @db.Uuid
+  cycle             ExamCycle @relation(fields: [examCycleId], references: [id], onDelete: Restrict)
+
+  @@map("salary_records")
+  @@schema("exam")
 }
+
 model ExamAnalysisRecord {
- id String @id @default(uuid()) @db.Uuid
- examCycleId String @map("exam_cycle_id") @db.Uuid
- analysisYear Int @map("analysis_year") @db.SmallInt
- analysisType String @map("analysis_type") @db.VarChar(50)
- title String @db.VarChar(250)
- description String?
- data Json
- sourceReferenceId String? @map("source_reference_id") @db.Uuid
- verificationStatus String @default("UNVERIFIED") @map("verification_status") @db.VarChar(30)
- publicationStatus String @default("DRAFT") @map("publication_status") @db.VarChar(30)
- cycle ExamCycle @relation(fields:[examCycleId],references:[id],onDelete:Restrict)
- @@map("exam_analysis_records")
- @@schema("exam")
+  id                 String    @id @default(uuid()) @db.Uuid
+  examCycleId        String    @map("exam_cycle_id") @db.Uuid
+  analysisYear       Int       @map("analysis_year") @db.SmallInt
+  analysisType       String    @map("analysis_type") @db.VarChar(50)
+  title              String    @db.VarChar(250)
+  description        String?
+  data               Json
+  sourceReferenceId  String?   @map("source_reference_id") @db.Uuid
+  verificationStatus String    @default("UNVERIFIED") @map("verification_status") @db.VarChar(30)
+  publicationStatus  String    @default("DRAFT") @map("publication_status") @db.VarChar(30)
+  cycle              ExamCycle @relation(fields: [examCycleId], references: [id], onDelete: Restrict)
+
+  @@map("exam_analysis_records")
+  @@schema("exam")
 }
+
 model CutoffRecord {
- id String @id @default(uuid()) @db.Uuid
- examCycleId String @map("exam_cycle_id") @db.Uuid
- cutoffYear Int @map("cutoff_year") @db.SmallInt
- stageType String @map("stage_type") @db.VarChar(50)
- categoryCode String @map("category_code") @db.VarChar(50)
- cutoffMarks Decimal @map("cutoff_marks") @db.Decimal(10,2)
- maximumMarks Decimal? @map("maximum_marks") @db.Decimal(10,2)
- cutoffType String @map("cutoff_type") @db.VarChar(30)
- sourceReferenceId String? @map("source_reference_id") @db.Uuid
- verificationStatus String @default("UNVERIFIED") @map("verification_status") @db.VarChar(30)
- cycle ExamCycle @relation(fields:[examCycleId],references:[id],onDelete:Restrict)
- @@unique([examCycleId,cutoffYear,stageType,categoryCode,cutoffType])
- @@map("cutoff_records")
- @@schema("exam")
+  id                 String    @id @default(uuid()) @db.Uuid
+  examCycleId        String    @map("exam_cycle_id") @db.Uuid
+  cutoffYear         Int       @map("cutoff_year") @db.SmallInt
+  stageType          String    @map("stage_type") @db.VarChar(50)
+  categoryCode       String    @map("category_code") @db.VarChar(50)
+  cutoffMarks        Decimal   @map("cutoff_marks") @db.Decimal(10, 2)
+  maximumMarks       Decimal?  @map("maximum_marks") @db.Decimal(10, 2)
+  cutoffType         String    @map("cutoff_type") @db.VarChar(30)
+  sourceReferenceId  String?   @map("source_reference_id") @db.Uuid
+  verificationStatus String    @default("UNVERIFIED") @map("verification_status") @db.VarChar(30)
+  cycle              ExamCycle @relation(fields: [examCycleId], references: [id], onDelete: Restrict)
+
+  @@unique([examCycleId, cutoffYear, stageType, categoryCode, cutoffType])
+  @@map("cutoff_records")
+  @@schema("exam")
 }
 
 model ExamOverviewVersion {
-  id String @id @default(uuid()) @db.Uuid
-  examCycleId String @map("exam_cycle_id") @db.Uuid
-  versionNumber Int @map("version_number")
-  description String?
-  qualificationSummary String? @map("qualification_summary")
-  ageSummary String? @map("age_summary")
-  vacancySummary String? @map("vacancy_summary")
-  modeSummary String? @map("mode_summary")
-  notificationSummary String? @map("notification_summary")
-  sourceReferenceId String? @map("source_reference_id") @db.Uuid
-  publicationStatus String @default("DRAFT") @map("publication_status") @db.VarChar(30)
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  publishedAt DateTime? @map("published_at") @db.Timestamptz(6)
-  cycle ExamCycle @relation(fields: [examCycleId], references: [id], onDelete: Restrict)
+  id                   String    @id @default(uuid()) @db.Uuid
+  examCycleId          String    @map("exam_cycle_id") @db.Uuid
+  versionNumber        Int       @map("version_number")
+  description          String?
+  qualificationSummary String?   @map("qualification_summary")
+  ageSummary           String?   @map("age_summary")
+  vacancySummary       String?   @map("vacancy_summary")
+  modeSummary          String?   @map("mode_summary")
+  notificationSummary  String?   @map("notification_summary")
+  sourceReferenceId    String?   @map("source_reference_id") @db.Uuid
+  publicationStatus    String    @default("DRAFT") @map("publication_status") @db.VarChar(30)
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  publishedAt          DateTime? @map("published_at") @db.Timestamptz(6)
+  cycle                ExamCycle @relation(fields: [examCycleId], references: [id], onDelete: Restrict)
+
   @@unique([examCycleId, versionNumber])
   @@map("exam_overview_versions")
   @@schema("exam")
 }
 
 model EligibilityProfile {
-  id String @id @default(uuid()) @db.Uuid
-  examCycleId String @unique @map("exam_cycle_id") @db.Uuid
-  name String @db.VarChar(200)
+  id          String               @id @default(uuid()) @db.Uuid
+  examCycleId String               @unique @map("exam_cycle_id") @db.Uuid
+  name        String               @db.VarChar(200)
   description String?
-  status String @default("ACTIVE") @db.VarChar(20)
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
-  cycle ExamCycle @relation(fields: [examCycleId], references: [id], onDelete: Restrict)
-  versions EligibilityVersion[]
+  status      String               @default("ACTIVE") @db.VarChar(20)
+  createdAt   DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
+  cycle       ExamCycle            @relation(fields: [examCycleId], references: [id], onDelete: Restrict)
+  versions    EligibilityVersion[]
+
   @@map("eligibility_profiles")
   @@schema("exam")
 }
+
 model EligibilityVersion {
-  id String @id @default(uuid()) @db.Uuid
-  eligibilityProfileId String @map("eligibility_profile_id") @db.Uuid
-  versionNumber Int @map("version_number")
-  referenceDate DateTime? @map("reference_date") @db.Date
-  nationalityRequired Boolean @default(false) @map("nationality_required")
-  qualificationRequired Boolean @default(false) @map("qualification_required")
-  publicationStatus String @default("DRAFT") @map("publication_status") @db.VarChar(30)
-  sourceReferenceId String? @map("source_reference_id") @db.Uuid
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  publishedAt DateTime? @map("published_at") @db.Timestamptz(6)
-  profile EligibilityProfile @relation(fields: [eligibilityProfileId], references: [id], onDelete: Restrict)
-  inputs EligibilityInput[]
-  ruleGroups EligibilityRuleGroup[]
+  id                    String                 @id @default(uuid()) @db.Uuid
+  eligibilityProfileId  String                 @map("eligibility_profile_id") @db.Uuid
+  versionNumber         Int                    @map("version_number")
+  referenceDate         DateTime?              @map("reference_date") @db.Date
+  nationalityRequired   Boolean                @default(false) @map("nationality_required")
+  qualificationRequired Boolean                @default(false) @map("qualification_required")
+  publicationStatus     String                 @default("DRAFT") @map("publication_status") @db.VarChar(30)
+  sourceReferenceId     String?                @map("source_reference_id") @db.Uuid
+  createdAt             DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+  publishedAt           DateTime?              @map("published_at") @db.Timestamptz(6)
+  profile               EligibilityProfile     @relation(fields: [eligibilityProfileId], references: [id], onDelete: Restrict)
+  inputs                EligibilityInput[]
+  ruleGroups            EligibilityRuleGroup[]
+
   @@unique([eligibilityProfileId, versionNumber])
   @@map("eligibility_versions")
   @@schema("exam")
 }
+
 model EligibilityInput {
-  id String @id @default(uuid()) @db.Uuid
-  eligibilityVersionId String @map("eligibility_version_id") @db.Uuid
-  inputKey String @map("input_key") @db.VarChar(100)
-  labelEn String @map("label_en") @db.VarChar(200)
-  labelHi String? @map("label_hi") @db.VarChar(200)
-  inputType String @map("input_type") @db.VarChar(30)
-  isRequired Boolean @default(false) @map("is_required")
-  options Json?
-  displayOrder Int @default(0) @map("display_order")
-  validationConfig Json? @map("validation_config")
-  version EligibilityVersion @relation(fields: [eligibilityVersionId], references: [id], onDelete: Restrict)
+  id                   String             @id @default(uuid()) @db.Uuid
+  eligibilityVersionId String             @map("eligibility_version_id") @db.Uuid
+  inputKey             String             @map("input_key") @db.VarChar(100)
+  labelEn              String             @map("label_en") @db.VarChar(200)
+  labelHi              String?            @map("label_hi") @db.VarChar(200)
+  inputType            String             @map("input_type") @db.VarChar(30)
+  isRequired           Boolean            @default(false) @map("is_required")
+  options              Json?
+  displayOrder         Int                @default(0) @map("display_order")
+  validationConfig     Json?              @map("validation_config")
+  version              EligibilityVersion @relation(fields: [eligibilityVersionId], references: [id], onDelete: Restrict)
+
   @@unique([eligibilityVersionId, inputKey])
   @@map("eligibility_inputs")
   @@schema("exam")
 }
+
 model EligibilityRuleGroup {
-  id String @id @default(uuid()) @db.Uuid
-  eligibilityVersionId String @map("eligibility_version_id") @db.Uuid
-  parentGroupId String? @map("parent_group_id") @db.Uuid
-  combinationOperator String @map("combination_operator") @db.VarChar(10)
-  priority Int @default(0)
-  description String?
-  version EligibilityVersion @relation(fields: [eligibilityVersionId], references: [id], onDelete: Restrict)
-  parent EligibilityRuleGroup? @relation("EligibilityRuleGroupParent", fields: [parentGroupId], references: [id], onDelete: Restrict)
-  children EligibilityRuleGroup[] @relation("EligibilityRuleGroupParent")
-  rules EligibilityRule[]
+  id                   String                 @id @default(uuid()) @db.Uuid
+  eligibilityVersionId String                 @map("eligibility_version_id") @db.Uuid
+  parentGroupId        String?                @map("parent_group_id") @db.Uuid
+  combinationOperator  String                 @map("combination_operator") @db.VarChar(10)
+  priority             Int                    @default(0)
+  description          String?
+  version              EligibilityVersion     @relation(fields: [eligibilityVersionId], references: [id], onDelete: Restrict)
+  parent               EligibilityRuleGroup?  @relation("EligibilityRuleGroupParent", fields: [parentGroupId], references: [id], onDelete: Restrict)
+  children             EligibilityRuleGroup[] @relation("EligibilityRuleGroupParent")
+  rules                EligibilityRule[]
+
   @@map("eligibility_rule_groups")
   @@schema("exam")
 }
+
 model EligibilityRule {
-  id String @id @default(uuid()) @db.Uuid
-  eligibilityRuleGroupId String @map("eligibility_rule_group_id") @db.Uuid
-  ruleType String @map("rule_type") @db.VarChar(50)
-  inputKey String? @map("input_key") @db.VarChar(100)
-  operator String @db.VarChar(30)
-  comparisonValue Json @map("comparison_value")
-  priority Int @default(0)
-  failureMessageEn String @map("failure_message_en")
-  failureMessageHi String? @map("failure_message_hi")
-  isActive Boolean @default(true) @map("is_active")
-  group EligibilityRuleGroup @relation(fields: [eligibilityRuleGroupId], references: [id], onDelete: Restrict)
+  id                     String               @id @default(uuid()) @db.Uuid
+  eligibilityRuleGroupId String               @map("eligibility_rule_group_id") @db.Uuid
+  ruleType               String               @map("rule_type") @db.VarChar(50)
+  inputKey               String?              @map("input_key") @db.VarChar(100)
+  operator               String               @db.VarChar(30)
+  comparisonValue        Json                 @map("comparison_value")
+  priority               Int                  @default(0)
+  failureMessageEn       String               @map("failure_message_en")
+  failureMessageHi       String?              @map("failure_message_hi")
+  isActive               Boolean              @default(true) @map("is_active")
+  group                  EligibilityRuleGroup @relation(fields: [eligibilityRuleGroupId], references: [id], onDelete: Restrict)
+
   @@map("eligibility_rules")
   @@schema("exam")
 }
 
 model ExamPatternVersion {
-  id String @id @default(uuid()) @db.Uuid
-  examCycleId String @map("exam_cycle_id") @db.Uuid
-  versionNumber Int @map("version_number")
-  name String @db.VarChar(200)
-  description String?
-  publicationStatus String @default("DRAFT") @map("publication_status") @db.VarChar(30)
-  sourceReferenceId String? @map("source_reference_id") @db.Uuid
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  publishedAt DateTime? @map("published_at") @db.Timestamptz(6)
-  cycle ExamCycle @relation(fields: [examCycleId], references: [id], onDelete: Restrict)
-  stages ExamStage[]
+  id                String      @id @default(uuid()) @db.Uuid
+  examCycleId       String      @map("exam_cycle_id") @db.Uuid
+  versionNumber     Int         @map("version_number")
+  name              String      @db.VarChar(200)
+  description       String?
+  publicationStatus String      @default("DRAFT") @map("publication_status") @db.VarChar(30)
+  sourceReferenceId String?     @map("source_reference_id") @db.Uuid
+  createdAt         DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  publishedAt       DateTime?   @map("published_at") @db.Timestamptz(6)
+  cycle             ExamCycle   @relation(fields: [examCycleId], references: [id], onDelete: Restrict)
+  stages            ExamStage[]
+
   @@unique([examCycleId, versionNumber])
   @@map("exam_pattern_versions")
   @@schema("exam")
 }
+
 model ExamStage {
-  id String @id @default(uuid()) @db.Uuid
-  patternVersionId String @map("pattern_version_id") @db.Uuid
-  name String @db.VarChar(200)
-  stageCode String? @map("stage_code") @db.VarChar(80)
-  stageType String @map("stage_type") @db.VarChar(50)
-  description String?
-  sequence Int
-  isMandatory Boolean @default(true) @map("is_mandatory")
-  isQualifying Boolean @default(false) @map("is_qualifying")
-  maximumMarks Decimal? @map("maximum_marks") @db.Decimal(10,2)
-  durationMinutes Int? @map("duration_minutes")
-  instructions String?
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  patternVersion ExamPatternVersion @relation(fields: [patternVersionId], references: [id], onDelete: Restrict)
-  papers ExamPaper[]
+  id               String             @id @default(uuid()) @db.Uuid
+  patternVersionId String             @map("pattern_version_id") @db.Uuid
+  name             String             @db.VarChar(200)
+  stageCode        String?            @map("stage_code") @db.VarChar(80)
+  stageType        String             @map("stage_type") @db.VarChar(50)
+  description      String?
+  sequence         Int
+  isMandatory      Boolean            @default(true) @map("is_mandatory")
+  isQualifying     Boolean            @default(false) @map("is_qualifying")
+  maximumMarks     Decimal?           @map("maximum_marks") @db.Decimal(10, 2)
+  durationMinutes  Int?               @map("duration_minutes")
+  instructions     String?
+  createdAt        DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  patternVersion   ExamPatternVersion @relation(fields: [patternVersionId], references: [id], onDelete: Restrict)
+  papers           ExamPaper[]
+
   @@unique([patternVersionId, sequence])
   @@map("exam_stages")
   @@schema("exam")
 }
+
 model ExamPaper {
-  id String @id @default(uuid()) @db.Uuid
-  stageId String @map("stage_id") @db.Uuid
-  name String @db.VarChar(200)
-  paperCode String? @map("paper_code") @db.VarChar(80)
-  subjectName String? @map("subject_name") @db.VarChar(200)
-  totalQuestions Int? @map("total_questions")
-  maximumMarks Decimal? @map("maximum_marks") @db.Decimal(10,2)
-  durationMinutes Int? @map("duration_minutes")
-  questionFormat String? @map("question_format") @db.VarChar(40)
-  negativeMarkingEnabled Boolean @default(false) @map("negative_marking_enabled")
-  negativeMarkingValue Decimal? @map("negative_marking_value") @db.Decimal(8,3)
-  isQualifying Boolean @default(false) @map("is_qualifying")
-  sequence Int
-  instructions String?
-  stage ExamStage @relation(fields: [stageId], references: [id], onDelete: Restrict)
-  markingScheme ExamMarkingScheme?
+  id                     String             @id @default(uuid()) @db.Uuid
+  stageId                String             @map("stage_id") @db.Uuid
+  name                   String             @db.VarChar(200)
+  paperCode              String?            @map("paper_code") @db.VarChar(80)
+  subjectName            String?            @map("subject_name") @db.VarChar(200)
+  totalQuestions         Int?               @map("total_questions")
+  maximumMarks           Decimal?           @map("maximum_marks") @db.Decimal(10, 2)
+  durationMinutes        Int?               @map("duration_minutes")
+  questionFormat         String?            @map("question_format") @db.VarChar(40)
+  negativeMarkingEnabled Boolean            @default(false) @map("negative_marking_enabled")
+  negativeMarkingValue   Decimal?           @map("negative_marking_value") @db.Decimal(8, 3)
+  isQualifying           Boolean            @default(false) @map("is_qualifying")
+  sequence               Int
+  instructions           String?
+  stage                  ExamStage          @relation(fields: [stageId], references: [id], onDelete: Restrict)
+  markingScheme          ExamMarkingScheme?
+
   @@unique([stageId, sequence])
   @@map("exam_papers")
   @@schema("exam")
 }
+
 model ExamMarkingScheme {
-  id String @id @default(uuid()) @db.Uuid
-  paperId String @unique @map("paper_id") @db.Uuid
-  correctMarks Decimal? @map("correct_marks") @db.Decimal(8,3)
-  incorrectMarks Decimal? @map("incorrect_marks") @db.Decimal(8,3)
-  unansweredMarks Decimal? @default(0) @map("unanswered_marks") @db.Decimal(8,3)
-  calculationType String @map("calculation_type") @db.VarChar(30)
-  configuration Json?
-  paper ExamPaper @relation(fields: [paperId], references: [id], onDelete: Restrict)
+  id              String    @id @default(uuid()) @db.Uuid
+  paperId         String    @unique @map("paper_id") @db.Uuid
+  correctMarks    Decimal?  @map("correct_marks") @db.Decimal(8, 3)
+  incorrectMarks  Decimal?  @map("incorrect_marks") @db.Decimal(8, 3)
+  unansweredMarks Decimal?  @default(0) @map("unanswered_marks") @db.Decimal(8, 3)
+  calculationType String    @map("calculation_type") @db.VarChar(30)
+  configuration   Json?
+  paper           ExamPaper @relation(fields: [paperId], references: [id], onDelete: Restrict)
+
   @@map("exam_marking_schemes")
   @@schema("exam")
 }
 
 model Syllabus {
-  id String @id @default(uuid()) @db.Uuid
-  examCycleId String @unique @map("exam_cycle_id") @db.Uuid
-  title String @db.VarChar(250)
+  id          String            @id @default(uuid()) @db.Uuid
+  examCycleId String            @unique @map("exam_cycle_id") @db.Uuid
+  title       String            @db.VarChar(250)
   description String?
-  status String @default("ACTIVE") @db.VarChar(20)
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
-  cycle ExamCycle @relation(fields: [examCycleId], references: [id], onDelete: Restrict)
-  versions SyllabusVersion[]
+  status      String            @default("ACTIVE") @db.VarChar(20)
+  createdAt   DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+  cycle       ExamCycle         @relation(fields: [examCycleId], references: [id], onDelete: Restrict)
+  versions    SyllabusVersion[]
+
   @@map("syllabuses")
   @@schema("exam")
 }
+
 model SyllabusVersion {
-  id String @id @default(uuid()) @db.Uuid
-  syllabusId String @map("syllabus_id") @db.Uuid
-  versionNumber Int @map("version_number")
-  versionLabel String @map("version_label") @db.VarChar(100)
-  languageDefault String @default("en") @map("language_default") @db.VarChar(10)
-  sourceReferenceId String? @map("source_reference_id") @db.Uuid
-  officialDocumentId String? @map("official_document_id") @db.Uuid
-  publicationStatus String @default("DRAFT") @map("publication_status") @db.VarChar(30)
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  publishedAt DateTime? @map("published_at") @db.Timestamptz(6)
-  syllabus Syllabus @relation(fields: [syllabusId], references: [id], onDelete: Restrict)
-  stages SyllabusStage[]
+  id                 String          @id @default(uuid()) @db.Uuid
+  syllabusId         String          @map("syllabus_id") @db.Uuid
+  versionNumber      Int             @map("version_number")
+  versionLabel       String          @map("version_label") @db.VarChar(100)
+  languageDefault    String          @default("en") @map("language_default") @db.VarChar(10)
+  sourceReferenceId  String?         @map("source_reference_id") @db.Uuid
+  officialDocumentId String?         @map("official_document_id") @db.Uuid
+  publicationStatus  String          @default("DRAFT") @map("publication_status") @db.VarChar(30)
+  createdAt          DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  publishedAt        DateTime?       @map("published_at") @db.Timestamptz(6)
+  syllabus           Syllabus        @relation(fields: [syllabusId], references: [id], onDelete: Restrict)
+  stages             SyllabusStage[]
+
   @@unique([syllabusId, versionNumber])
   @@map("syllabus_versions")
   @@schema("exam")
 }
+
 model SyllabusStage {
-  id String @id @default(uuid()) @db.Uuid
-  syllabusVersionId String @map("syllabus_version_id") @db.Uuid
-  examStageId String? @map("exam_stage_id") @db.Uuid
-  name String @db.VarChar(200)
-  sequence Int
-  version SyllabusVersion @relation(fields: [syllabusVersionId], references: [id], onDelete: Restrict)
-  papers SyllabusPaper[]
+  id                String          @id @default(uuid()) @db.Uuid
+  syllabusVersionId String          @map("syllabus_version_id") @db.Uuid
+  examStageId       String?         @map("exam_stage_id") @db.Uuid
+  name              String          @db.VarChar(200)
+  sequence          Int
+  version           SyllabusVersion @relation(fields: [syllabusVersionId], references: [id], onDelete: Restrict)
+  papers            SyllabusPaper[]
+
   @@map("syllabus_stages")
   @@schema("exam")
 }
+
 model SyllabusPaper {
-  id String @id @default(uuid()) @db.Uuid
-  syllabusStageId String @map("syllabus_stage_id") @db.Uuid
-  examPaperId String? @map("exam_paper_id") @db.Uuid
-  name String @db.VarChar(200)
-  sequence Int
-  stage SyllabusStage @relation(fields: [syllabusStageId], references: [id], onDelete: Restrict)
-  subjects SyllabusSubject[]
+  id              String            @id @default(uuid()) @db.Uuid
+  syllabusStageId String            @map("syllabus_stage_id") @db.Uuid
+  examPaperId     String?           @map("exam_paper_id") @db.Uuid
+  name            String            @db.VarChar(200)
+  sequence        Int
+  stage           SyllabusStage     @relation(fields: [syllabusStageId], references: [id], onDelete: Restrict)
+  subjects        SyllabusSubject[]
+
   @@map("syllabus_papers")
   @@schema("exam")
 }
+
 model SyllabusSubject {
-  id String @id @default(uuid()) @db.Uuid
-  syllabusPaperId String @map("syllabus_paper_id") @db.Uuid
-  name String @db.VarChar(250)
-  description String?
-  sequence Int
-  paper SyllabusPaper @relation(fields: [syllabusPaperId], references: [id], onDelete: Restrict)
-  topics SyllabusTopic[]
+  id              String          @id @default(uuid()) @db.Uuid
+  syllabusPaperId String          @map("syllabus_paper_id") @db.Uuid
+  name            String          @db.VarChar(250)
+  description     String?
+  sequence        Int
+  paper           SyllabusPaper   @relation(fields: [syllabusPaperId], references: [id], onDelete: Restrict)
+  topics          SyllabusTopic[]
+
   @@map("syllabus_subjects")
   @@schema("exam")
 }
+
 model SyllabusTopic {
-  id String @id @default(uuid()) @db.Uuid
-  syllabusSubjectId String @map("syllabus_subject_id") @db.Uuid
-  parentTopicId String? @map("parent_topic_id") @db.Uuid
-  topicCode String? @map("topic_code") @db.VarChar(100)
-  name String @db.VarChar(300)
-  description String?
-  depthLevel Int @map("depth_level") @db.SmallInt
-  displayOrder Int @map("display_order")
-  status String @default("ACTIVE") @db.VarChar(20)
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
-  subject SyllabusSubject @relation(fields: [syllabusSubjectId], references: [id], onDelete: Restrict)
-  parent SyllabusTopic? @relation("SyllabusTopicParent", fields: [parentTopicId], references: [id], onDelete: Restrict)
-  children SyllabusTopic[] @relation("SyllabusTopicParent")
-  translations SyllabusTopicTranslation[]
+  id                String                     @id @default(uuid()) @db.Uuid
+  syllabusSubjectId String                     @map("syllabus_subject_id") @db.Uuid
+  parentTopicId     String?                    @map("parent_topic_id") @db.Uuid
+  topicCode         String?                    @map("topic_code") @db.VarChar(100)
+  name              String                     @db.VarChar(300)
+  description       String?
+  depthLevel        Int                        @map("depth_level") @db.SmallInt
+  displayOrder      Int                        @map("display_order")
+  status            String                     @default("ACTIVE") @db.VarChar(20)
+  createdAt         DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime                   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  subject           SyllabusSubject            @relation(fields: [syllabusSubjectId], references: [id], onDelete: Restrict)
+  parent            SyllabusTopic?             @relation("SyllabusTopicParent", fields: [parentTopicId], references: [id], onDelete: Restrict)
+  children          SyllabusTopic[]            @relation("SyllabusTopicParent")
+  translations      SyllabusTopicTranslation[]
+
   @@map("syllabus_topics")
   @@schema("exam")
 }
+
 model SyllabusTopicTranslation {
-  id String @id @default(uuid()) @db.Uuid
-  syllabusTopicId String @map("syllabus_topic_id") @db.Uuid
-  languageCode String @map("language_code") @db.VarChar(10)
-  name String @db.VarChar(300)
-  description String?
-  topic SyllabusTopic @relation(fields: [syllabusTopicId], references: [id], onDelete: Restrict)
+  id              String        @id @default(uuid()) @db.Uuid
+  syllabusTopicId String        @map("syllabus_topic_id") @db.Uuid
+  languageCode    String        @map("language_code") @db.VarChar(10)
+  name            String        @db.VarChar(300)
+  description     String?
+  topic           SyllabusTopic @relation(fields: [syllabusTopicId], references: [id], onDelete: Restrict)
+
   @@unique([syllabusTopicId, languageCode])
   @@map("syllabus_topic_translations")
+  @@schema("exam")
+}
+
+model ExamDocument {
+  id                 String   @id @default(uuid()) @db.Uuid
+  examId             String   @map("exam_id") @db.Uuid
+  examCycleId        String?  @map("exam_cycle_id") @db.Uuid
+  documentTitle      String   @map("document_title") @db.VarChar(250)
+  documentType       String   @map("document_type") @db.VarChar(50)
+  mediaId            String?  @map("media_id") @db.Uuid
+  externalUrl        String?  @map("external_url")
+  sourceReferenceId  String?  @map("source_reference_id") @db.Uuid
+  verificationStatus String   @default("DRAFT") @map("verification_status") @db.VarChar(30)
+  displayOrder       Int      @default(0) @map("display_order")
+  status             String   @default("ACTIVE") @db.VarChar(20)
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([examId])
+  @@map("exam_documents")
+  @@schema("exam")
+}
+
+model ExamLink {
+  id                String   @id @default(uuid()) @db.Uuid
+  examId            String   @map("exam_id") @db.Uuid
+  examCycleId       String?  @map("exam_cycle_id") @db.Uuid
+  title             String   @db.VarChar(200)
+  url               String
+  linkType          String   @map("link_type") @db.VarChar(50)
+  sourceReferenceId String?  @map("source_reference_id") @db.Uuid
+  displayOrder      Int      @default(0) @map("display_order")
+  isActive          Boolean  @default(true) @map("is_active")
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([examId])
+  @@map("exam_links")
+  @@schema("exam")
+}
+
+model ExamFaq {
+  id           String   @id @default(uuid()) @db.Uuid
+  examId       String   @map("exam_id") @db.Uuid
+  examCycleId  String?  @map("exam_cycle_id") @db.Uuid
+  question     String
+  answer       String
+  languageCode String   @default("en") @map("language_code") @db.VarChar(10)
+  displayOrder Int      @default(0) @map("display_order")
+  status       String   @default("DRAFT") @db.VarChar(20)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([examId])
+  @@map("exam_faqs")
+  @@schema("exam")
+}
+
+model ExamImportJob {
+  id          String          @id @default(uuid()) @db.Uuid
+  importType  String          @map("import_type") @db.VarChar(50)
+  fileMediaId String          @map("file_media_id") @db.Uuid
+  status      String          @default("PENDING") @db.VarChar(30)
+  totalRows   Int             @default(0) @map("total_rows")
+  validRows   Int             @default(0) @map("valid_rows")
+  invalidRows Int             @default(0) @map("invalid_rows")
+  createdBy   String?         @map("created_by") @db.Uuid
+  startedAt   DateTime?       @map("started_at") @db.Timestamptz(6)
+  completedAt DateTime?       @map("completed_at") @db.Timestamptz(6)
+  createdAt   DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  rows        ExamImportRow[]
+
+  @@map("exam_import_jobs")
+  @@schema("exam")
+}
+
+model ExamImportRow {
+  id               String        @id @default(uuid()) @db.Uuid
+  importJobId      String        @map("import_job_id") @db.Uuid
+  rowNumber        Int           @map("row_number")
+  sourceData       Json          @map("source_data")
+  validationErrors Json?         @map("validation_errors")
+  importStatus     String        @default("PENDING") @map("import_status") @db.VarChar(30)
+  createdRecordId  String?       @map("created_record_id") @db.Uuid
+  createdAt        DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  job              ExamImportJob @relation(fields: [importJobId], references: [id], onDelete: Restrict)
+
+  @@index([importJobId])
+  @@map("exam_import_rows")
   @@schema("exam")
 }
