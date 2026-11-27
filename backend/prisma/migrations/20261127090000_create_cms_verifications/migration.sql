@@ -1,0 +1,1 @@
+CREATE TABLE cms.cms_content_verifications (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), workflow_task_id UUID NOT NULL REFERENCES cms.cms_workflow_tasks(id), decision VARCHAR(30) NOT NULL, verification_notes TEXT, source_ids JSONB NOT NULL DEFAULT '[]', verifier_user_id UUID NOT NULL, verified_at TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP);

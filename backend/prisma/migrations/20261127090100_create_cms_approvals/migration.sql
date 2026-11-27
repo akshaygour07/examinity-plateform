@@ -1,0 +1,1 @@
+CREATE TABLE cms.cms_content_approvals (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), workflow_task_id UUID NOT NULL REFERENCES cms.cms_workflow_tasks(id), decision VARCHAR(30) NOT NULL, comments TEXT, approver_user_id UUID NOT NULL, decided_at TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP);

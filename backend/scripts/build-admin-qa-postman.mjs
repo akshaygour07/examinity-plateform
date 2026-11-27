@@ -476,7 +476,7 @@ const cmsBody = (key, title, slug) => ({
 const cmsFolder = {
   name: "15 - Module-4 CMS",
   description:
-    "Run after the local mock-admin authentication and sync folders. Set cmsContentTypeId to a seeded active type UUID first. Four subfolders mirror the CMS Nest modules and capture IDs for dependent requests.",
+    "Run after the local mock-admin authentication and sync folders. Set cmsContentTypeId to a seeded active type UUID first. Seven subfolders mirror the implemented CMS modules and capture IDs for dependent requests.",
   event: [
     {
       listen: "prerequest",
@@ -544,6 +544,63 @@ const cmsFolder = {
         cmsRequest("Get review task", "GET", "/admin/cms/reviews/{{cmsTaskId}}", { tests: ["pm.test('review task returns 200', () => pm.response.to.have.status(200));"] }),
         cmsRequest("Approve review task", "POST", "/admin/cms/reviews/{{cmsTaskId}}/approve", { body: { comments: "CMS QA review approved.", fieldComments: [] }, tests: ["pm.test('review approval returns 200', () => pm.response.to.have.status(200));"] }),
         cmsRequest("Request changes on closed task (expected 409)", "POST", "/admin/cms/reviews/{{cmsTaskId}}/request-changes", { body: { comments: "Intentional closed-task validation check." }, tests: ["pm.test('closed task rejects a second decision', () => pm.response.to.have.status(409));"] }),
+      ],
+    },
+    {
+      name: "05 - Verifications",
+      item: [
+        cmsRequest("List verification queue", "GET", "/admin/cms/verifications/queue", {
+          tests: [
+            "pm.test('verification queue returns 200', () => pm.response.to.have.status(200));",
+            "const task = pm.response.json().data[0]; if (task) pm.environment.set('cmsVerificationTaskId', task.id);",
+          ],
+        }),
+        cmsRequest("Get verification task", "GET", "/admin/cms/verifications/{{cmsVerificationTaskId}}", {
+          tests: ["pm.test('verification task returns 200', () => pm.response.to.have.status(200));"],
+        }),
+        cmsRequest("Verify revision", "POST", "/admin/cms/verifications/{{cmsVerificationTaskId}}/verify", {
+          body: { verificationNotes: "CMS QA verification complete.", sourceIds: [] },
+          tests: ["pm.test('verification succeeds', () => pm.response.to.have.status(201));"],
+        }),
+        cmsRequest("Request verification changes on closed task (expected 409)", "POST", "/admin/cms/verifications/{{cmsVerificationTaskId}}/request-changes", {
+          body: { comments: "Intentional closed-task validation check." },
+          tests: ["pm.test('closed verification rejects a second decision', () => pm.response.to.have.status(409));"],
+        }),
+      ],
+    },
+    {
+      name: "06 - Approvals",
+      item: [
+        cmsRequest("List approval queue", "GET", "/admin/cms/approvals/queue", {
+          tests: [
+            "pm.test('approval queue returns 200', () => pm.response.to.have.status(200));",
+            "const task = pm.response.json().data[0]; if (task) pm.environment.set('cmsApprovalTaskId', task.id);",
+          ],
+        }),
+        cmsRequest("Get approval task", "GET", "/admin/cms/approvals/{{cmsApprovalTaskId}}", {
+          tests: ["pm.test('approval task returns 200', () => pm.response.to.have.status(200));"],
+        }),
+        cmsRequest("Approve revision", "POST", "/admin/cms/approvals/{{cmsApprovalTaskId}}/approve", {
+          body: { comments: "Approved for CMS QA publishing." },
+          tests: ["pm.test('approval succeeds', () => pm.response.to.have.status(201));"],
+        }),
+        cmsRequest("Request approval changes on closed task (expected 409)", "POST", "/admin/cms/approvals/{{cmsApprovalTaskId}}/request-changes", {
+          body: { comments: "Intentional closed-task validation check." },
+          tests: ["pm.test('closed approval rejects a second decision', () => pm.response.to.have.status(409));"],
+        }),
+      ],
+    },
+    {
+      name: "07 - Publishing",
+      item: [
+        cmsRequest("Schedule approved revision", "POST", "/admin/cms/revisions/{{cmsWorkingRevisionId}}/schedule", {
+          body: { scheduledAt: "2030-01-01T09:00:00+05:30", timeZone: "Asia/Kolkata" },
+          tests: ["pm.test('publication schedule returns 201', () => pm.response.to.have.status(201));"],
+        }),
+        cmsRequest("Publish approved revision", "POST", "/admin/cms/revisions/{{cmsWorkingRevisionId}}/publish", {
+          body: { comment: "CMS QA approved release." },
+          tests: ["pm.test('publication returns 201', () => pm.response.to.have.status(201));"],
+        }),
       ],
     },
   ],

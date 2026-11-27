@@ -469,3 +469,53 @@ model CmsContentReview {
   @@map("cms_content_reviews")
   @@schema("cms")
 }
+
+model CmsContentVerification {
+  id String @id @default(uuid()) @db.Uuid
+  workflowTaskId String @map("workflow_task_id") @db.Uuid
+  decision String @db.VarChar(30)
+  verificationNotes String? @map("verification_notes")
+  sourceIds Json @default("[]") @map("source_ids") @db.JsonB
+  verifierUserId String @map("verifier_user_id") @db.Uuid
+  verifiedAt DateTime @default(now()) @map("verified_at") @db.Timestamptz(6)
+  @@map("cms_content_verifications")
+  @@schema("cms")
+}
+
+model CmsContentApproval {
+  id String @id @default(uuid()) @db.Uuid
+  workflowTaskId String @map("workflow_task_id") @db.Uuid
+  decision String @db.VarChar(30)
+  comments String?
+  approverUserId String @map("approver_user_id") @db.Uuid
+  decidedAt DateTime @default(now()) @map("decided_at") @db.Timestamptz(6)
+  @@map("cms_content_approvals")
+  @@schema("cms")
+}
+
+model CmsPublication {
+  id String @id @default(uuid()) @db.Uuid
+  contentItemId String @map("content_item_id") @db.Uuid
+  contentRevisionId String @map("content_revision_id") @db.Uuid
+  locale String @db.VarChar(10)
+  publishedByUserId String? @map("published_by_user_id") @db.Uuid
+  publishedAt DateTime @default(now()) @map("published_at") @db.Timestamptz(6)
+  publicationStatus String @map("publication_status") @db.VarChar(20)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  @@map("cms_publications")
+  @@schema("cms")
+}
+
+model CmsScheduledPublication {
+  id String @id @default(uuid()) @db.Uuid
+  contentItemId String @map("content_item_id") @db.Uuid
+  contentRevisionId String @map("content_revision_id") @db.Uuid
+  scheduledAt DateTime @map("scheduled_at") @db.Timestamptz(6)
+  timeZone String @map("time_zone") @db.VarChar(100)
+  status String @db.VarChar(20)
+  createdByUserId String @map("created_by_user_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  @@map("cms_scheduled_publications")
+  @@schema("cms")
+}

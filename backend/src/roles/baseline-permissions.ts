@@ -89,6 +89,12 @@ export const cmsFirstTwentyPermissions = [
   "cms.assignment.manage",
   "cms.review.read",
   "cms.review.manage",
+  "cms.verification.read",
+  "cms.verification.manage",
+  "cms.approval.read",
+  "cms.approval.manage",
+  "cms.publish",
+  "cms.publish.schedule",
 ] as const;
 
 /**

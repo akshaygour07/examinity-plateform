@@ -53,6 +53,10 @@ export class ReviewsService {
         where: { id: task.data.workflowInstanceId },
         data: { state: decision === "APPROVED" ? "REVIEWED" : "CHANGES_REQUESTED" },
       });
+      if (decision === "APPROVED")
+        await tx.cmsWorkflowTask.create({
+          data: { workflowInstanceId: task.data.workflowInstanceId, taskType: "VERIFICATION", status: "OPEN" },
+        });
       return { data: review };
     });
   }
